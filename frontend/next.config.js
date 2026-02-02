@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  transpilePackages: ['@iexec/dataprotector'],
+  experimental: {
+    esmExternals: 'loose',
+  },
   webpack: (config, { isServer }) => {
     config.resolve.fallback = {
       fs: false,
@@ -16,16 +20,6 @@ const nextConfig = {
     };
 
     config.externals.push('pino-pretty', 'lokijs', 'encoding');
-
-    // Ignore node-specific modules that aren't needed in browser
-    if (!isServer) {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        'fs': false,
-        'net': false,
-        'tls': false,
-      };
-    }
 
     return config;
   },
