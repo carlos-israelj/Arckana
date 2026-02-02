@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { IExecDataProtector, IExecDataProtectorCore } from '@iexec/dataprotector';
+
+// Dynamic import type for DataProtector
+type IExecDataProtector = any;
+type IExecDataProtectorCore = any;
 
 /**
  * Custom hook for iExec DataProtector integration
@@ -15,6 +18,9 @@ export function useDataProtector() {
 
   useEffect(() => {
     const initializeDataProtector = async () => {
+      // Only run in browser
+      if (typeof window === 'undefined') return;
+
       if (!isConnected || !connector) {
         setDataProtector(null);
         setDataProtectorCore(null);
@@ -25,6 +31,9 @@ export function useDataProtector() {
       setError(null);
 
       try {
+        // Dynamic import to avoid SSR issues
+        const { IExecDataProtector } = await import('@iexec/dataprotector');
+
         const provider = await connector.getProvider() as import('ethers').Eip1193Provider;
 
         const dp = new IExecDataProtector(provider, {
