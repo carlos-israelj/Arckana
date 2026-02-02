@@ -1,11 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
-import ProtectBalance from '@/components/ProtectBalance';
 import DistributionStatus from '@/components/DistributionStatus';
 import ClaimDividend from '@/components/ClaimDividend';
+
+// Load ProtectBalance only on client side to avoid webpack processing @iexec/dataprotector during SSR
+const ProtectBalance = dynamic(() => import('@/components/ProtectBalance'), {
+  ssr: false,
+  loading: () => <div className="text-center text-gray-400">Loading...</div>
+});
 
 export default function Home() {
   const { isConnected } = useAccount();
