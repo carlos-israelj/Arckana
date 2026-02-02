@@ -42,6 +42,11 @@ export default function ProtectBalance() {
   const handleGrantAccess = async () => {
     if (!protectedDataAddress) return;
 
+    if (!IAPP_ADDRESS) {
+      alert('iApp address not configured. Please set NEXT_PUBLIC_IAPP_ADDRESS.');
+      return;
+    }
+
     try {
       // Grant access to iApp with status updates
       // This automatically deploys orders on the network for the iApp
