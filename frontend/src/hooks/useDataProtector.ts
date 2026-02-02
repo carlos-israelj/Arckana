@@ -88,7 +88,7 @@ export function useProtectData() {
       const result = await dataProtectorCore.protectData({
         data: data.data,
         name: data.name,
-        onStatusUpdate: ({ title, isDone }) => {
+        onStatusUpdate: ({ title, isDone }: { title: string; isDone: boolean }) => {
           setStatus({ title, isDone });
           console.log(`Protect Data Status: ${title}, Done: ${isDone}`);
         },
@@ -137,7 +137,7 @@ export function useGrantAccess() {
         authorizedUser: params.authorizedUser || '0x0000000000000000000000000000000000000000',
         pricePerAccess: params.pricePerAccess || 0,
         numberOfAccess: params.numberOfAccess || 1,
-        onStatusUpdate: ({ title, isDone }) => {
+        onStatusUpdate: ({ title, isDone }: { title: string; isDone: boolean }) => {
           setStatus({ title, isDone });
           console.log(`Grant Access Status: ${title}, Done: ${isDone}`);
         },
