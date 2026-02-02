@@ -44,3 +44,78 @@ export const EXPLORER_LINKS = {
   paymaster: getExplorerLink(CONTRACTS.paymaster),
   entryPoint: getExplorerLink(CONTRACTS.entryPoint),
 } as const;
+
+// Export contract addresses for backwards compatibility
+export const DIVIDEND_POOL_ADDRESS = CONTRACTS.dividendPool;
+
+// DividendPool ABI
+export const DIVIDEND_POOL_ABI = [
+  {
+    type: 'function',
+    name: 'claimDividend',
+    inputs: [
+      { name: 'round', type: 'uint256' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'merkleProof', type: 'bytes32[]' }
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable'
+  },
+  {
+    type: 'function',
+    name: 'currentRound',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view'
+  },
+  {
+    type: 'function',
+    name: 'getRoundInfo',
+    inputs: [{ name: 'round', type: 'uint256' }],
+    outputs: [
+      { name: 'root', type: 'bytes32' },
+      { name: 'total', type: 'uint256' }
+    ],
+    stateMutability: 'view'
+  },
+  {
+    type: 'function',
+    name: 'hasClaimed',
+    inputs: [
+      { name: '', type: 'uint256' },
+      { name: '', type: 'address' }
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view'
+  },
+  {
+    type: 'function',
+    name: 'canClaim',
+    inputs: [
+      { name: 'round', type: 'uint256' },
+      { name: 'holder', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'merkleProof', type: 'bytes32[]' }
+    ],
+    outputs: [{ name: 'valid', type: 'bool' }],
+    stateMutability: 'view'
+  },
+  {
+    type: 'event',
+    name: 'DividendClaimed',
+    inputs: [
+      { name: 'round', type: 'uint256', indexed: true },
+      { name: 'holder', type: 'address', indexed: true },
+      { name: 'amount', type: 'uint256', indexed: false }
+    ]
+  },
+  {
+    type: 'event',
+    name: 'RoundStarted',
+    inputs: [
+      { name: 'round', type: 'uint256', indexed: true },
+      { name: 'merkleRoot', type: 'bytes32', indexed: false },
+      { name: 'totalPool', type: 'uint256', indexed: false }
+    ]
+  }
+] as const;
