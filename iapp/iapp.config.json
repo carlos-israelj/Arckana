@@ -1,9 +1,0 @@
-{
-  "defaultChain": "arbitrum-sepolia-testnet",
-  "projectName": "arckana-dividend-calculator",
-  "template": "Python",
-  "dockerhubUsername": "carlosisraelj",
-  "walletPrivateKey": "",
-  "appSecret": "",
-  "dockerhubAccessToken": ""
-}

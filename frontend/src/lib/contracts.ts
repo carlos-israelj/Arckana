@@ -1,123 +1,46 @@
-// frontend/src/lib/contracts.ts
+// Smart Contract Addresses - Arbitrum Sepolia
+// Deployed on 2026-01-30
 
-// Arbitrum Sepolia Testnet
-export const CHAIN_ID = 421614;
+export const CONTRACTS = {
+  // Treasury Token (simulates tokenized treasury fund like BUIDL)
+  arckanaToken: '0xaF7B67b88128820Fae205A07aDC055ed509Bdb12' as `0x${string}`,
+  
+  // Payment Token (for dividend distributions - simulates USDC)
+  paymentToken: '0x71E3a04c9Ecc624656334756f70dAAA1fc4F985D' as `0x${string}`,
+  
+  // Dividend Distribution Pool (Merkle proof-based claims)
+  dividendPool: '0xfD0b399898efC0186E32eb81B630d7Cf7Bb6f217' as `0x${string}`,
+  
+  // ERC-4337 Paymaster (gas sponsorship for claims)
+  paymaster: '0x648B7FfD8a5Dd9C901B6569E7a0DC9A2eAF4c9F1' as `0x${string}`,
+  
+  // EntryPoint v0.7 (ERC-4337)
+  entryPoint: '0x0000000071727De22E5E9d8BAf0edAc6f37dA032' as `0x${string}`,
+} as const;
 
-// Contract Addresses (update after deployment)
-export const ARCANA_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_ARCANA_TOKEN_ADDRESS || '0x0') as `0x${string}`;
-export const DIVIDEND_POOL_ADDRESS = (process.env.NEXT_PUBLIC_DIVIDEND_POOL_ADDRESS || '0x0') as `0x${string}`;
-export const PAYMASTER_ADDRESS = (process.env.NEXT_PUBLIC_PAYMASTER_ADDRESS || '0x0') as `0x${string}`;
+// iExec iApp Address (TEE application for confidential dividend calculation)
+// Note: Deployment pending due to iExec TEE transformation service issue
+// Will be updated once iApp is successfully deployed
+export const IAPP_ADDRESS = process.env.NEXT_PUBLIC_IAPP_ADDRESS as `0x${string}` | undefined;
 
-// Payment token (USDC on Arbitrum Sepolia or custom)
-export const PAYMENT_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_PAYMENT_TOKEN_ADDRESS || '0x0') as `0x${string}`;
+// Network Configuration
+export const NETWORK = {
+  chainId: 421614, // Arbitrum Sepolia
+  name: 'Arbitrum Sepolia',
+  rpcUrl: 'https://sepolia-rollup.arbitrum.io/rpc',
+  blockExplorer: 'https://sepolia.arbiscan.io',
+} as const;
 
-// iExec iApp Address
-export const IAPP_ADDRESS = process.env.NEXT_PUBLIC_IAPP_ADDRESS || '0x0';
+// Contract Explorer Links
+export const getExplorerLink = (address: string, type: 'address' | 'tx' = 'address') => {
+  return `${NETWORK.blockExplorer}/${type}/${address}`;
+};
 
-// ABIs
-export const ARCANA_TOKEN_ABI = [
-  {
-    "inputs": [{"name": "account", "type": "address"}],
-    "name": "balanceOf",
-    "outputs": [{"name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "decimals",
-    "outputs": [{"name": "", "type": "uint8"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {"name": "to", "type": "address"},
-      {"name": "amount", "type": "uint256"}
-    ],
-    "name": "mint",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {"name": "spender", "type": "address"},
-      {"name": "amount", "type": "uint256"}
-    ],
-    "name": "approve",
-    "outputs": [{"name": "", "type": "bool"}],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
-] as const;
-
-export const DIVIDEND_POOL_ABI = [
-  {
-    "inputs": [],
-    "name": "currentRound",
-    "outputs": [{"name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{"name": "", "type": "uint256"}],
-    "name": "merkleRoots",
-    "outputs": [{"name": "", "type": "bytes32"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {"name": "", "type": "uint256"},
-      {"name": "", "type": "address"}
-    ],
-    "name": "hasClaimed",
-    "outputs": [{"name": "", "type": "bool"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {"name": "round", "type": "uint256"},
-      {"name": "amount", "type": "uint256"},
-      {"name": "merkleProof", "type": "bytes32[]"}
-    ],
-    "name": "claimDividend",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {"name": "round", "type": "uint256"},
-      {"name": "holder", "type": "address"},
-      {"name": "amount", "type": "uint256"},
-      {"name": "merkleProof", "type": "bytes32[]"}
-    ],
-    "name": "canClaim",
-    "outputs": [{"name": "valid", "type": "bool"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{"name": "round", "type": "uint256"}],
-    "name": "getRoundInfo",
-    "outputs": [
-      {"name": "root", "type": "bytes32"},
-      {"name": "total", "type": "uint256"}
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {"indexed": true, "name": "round", "type": "uint256"},
-      {"indexed": true, "name": "holder", "type": "address"},
-      {"indexed": false, "name": "amount", "type": "uint256"}
-    ],
-    "name": "DividendClaimed",
-    "type": "event"
-  }
-] as const;
+// Deployed Contracts Explorer Links
+export const EXPLORER_LINKS = {
+  arckanaToken: getExplorerLink(CONTRACTS.arckanaToken),
+  paymentToken: getExplorerLink(CONTRACTS.paymentToken),
+  dividendPool: getExplorerLink(CONTRACTS.dividendPool),
+  paymaster: getExplorerLink(CONTRACTS.paymaster),
+  entryPoint: getExplorerLink(CONTRACTS.entryPoint),
+} as const;

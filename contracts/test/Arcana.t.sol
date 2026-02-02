@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.23;
 
 import "forge-std/Test.sol";
-import "../src/ArcanaToken.sol";
+import "../src/ArckanaToken.sol";
 import "../src/DividendPool.sol";
 
-contract ArcanaTest is Test {
-    ArcanaToken public arcanaToken;
-    ArcanaToken public paymentToken;
+contract ArckanaTest is Test {
+    ArckanaToken public arckanaToken;
+    ArckanaToken public paymentToken;
     DividendPool public dividendPool;
 
     address public owner = address(this);
@@ -17,16 +17,16 @@ contract ArcanaTest is Test {
 
     function setUp() public {
         // Deploy tokens
-        arcanaToken = new ArcanaToken();
-        paymentToken = new ArcanaToken();
+        arckanaToken = new ArckanaToken();
+        paymentToken = new ArckanaToken();
 
         // Deploy dividend pool
         dividendPool = new DividendPool(address(paymentToken));
 
         // Mint tokens to holders
-        arcanaToken.mint(alice, 1000 * 10**6);
-        arcanaToken.mint(bob, 500 * 10**6);
-        arcanaToken.mint(charlie, 500 * 10**6);
+        arckanaToken.mint(alice, 1000 * 10**6);
+        arckanaToken.mint(bob, 500 * 10**6);
+        arckanaToken.mint(charlie, 500 * 10**6);
 
         // Mint payment tokens to pool operator
         paymentToken.mint(owner, 1000 * 10**6);
@@ -34,8 +34,8 @@ contract ArcanaTest is Test {
     }
 
     function testMintTokens() public {
-        assertEq(arcanaToken.balanceOf(alice), 1000 * 10**6);
-        assertEq(arcanaToken.balanceOf(bob), 500 * 10**6);
+        assertEq(arckanaToken.balanceOf(alice), 1000 * 10**6);
+        assertEq(arckanaToken.balanceOf(bob), 500 * 10**6);
     }
 
     function testStartDistributionRound() public {

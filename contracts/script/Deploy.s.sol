@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
-import "../src/ArcanaToken.sol";
+import "../src/ArckanaToken.sol";
 import "../src/DividendPool.sol";
-import "../src/ArcanaPaymaster.sol";
+import "../src/ArckanaPaymaster.sol";
 
 contract DeployScript is Script {
     function run() external {
@@ -13,25 +13,25 @@ contract DeployScript is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy ArcanaToken (mock treasury token)
-        ArcanaToken arcanaToken = new ArcanaToken();
-        console.log("ArcanaToken deployed at:", address(arcanaToken));
+        // Deploy ArckanaToken (mock treasury token)
+        ArckanaToken arckanaToken = new ArckanaToken();
+        console.log("ArckanaToken deployed at:", address(arckanaToken));
 
         // Deploy payment token (for dividends) - in production, this would be USDC
         // For demo, we'll deploy another token to represent USDC
-        ArcanaToken paymentToken = new ArcanaToken();
+        ArckanaToken paymentToken = new ArckanaToken();
         console.log("PaymentToken deployed at:", address(paymentToken));
 
         // Deploy DividendPool
         DividendPool dividendPool = new DividendPool(address(paymentToken));
         console.log("DividendPool deployed at:", address(dividendPool));
 
-        // Deploy ArcanaPaymaster
-        ArcanaPaymaster paymaster = new ArcanaPaymaster(
+        // Deploy ArckanaPaymaster
+        ArckanaPaymaster paymaster = new ArckanaPaymaster(
             IEntryPoint(entryPoint),
             address(dividendPool)
         );
-        console.log("ArcanaPaymaster deployed at:", address(paymaster));
+        console.log("ArckanaPaymaster deployed at:", address(paymaster));
 
         // Fund paymaster with some ETH for gas sponsorship
         paymaster.deposit{value: 0.1 ether}();
@@ -41,9 +41,9 @@ contract DeployScript is Script {
 
         // Output deployment info
         console.log("\n=== Deployment Summary ===");
-        console.log("ArcanaToken:", address(arcanaToken));
+        console.log("ArckanaToken:", address(arckanaToken));
         console.log("PaymentToken:", address(paymentToken));
         console.log("DividendPool:", address(dividendPool));
-        console.log("ArcanaPaymaster:", address(paymaster));
+        console.log("ArckanaPaymaster:", address(paymaster));
     }
 }

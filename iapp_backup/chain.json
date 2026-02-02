@@ -1,0 +1,17 @@
+{
+  "default": "arbitrum-sepolia-testnet",
+  "chains": {
+    "mainnet": {},
+    "bellecour": {},
+    "arbitrum-mainnet": {},
+    "arbitrum-sepolia-testnet": {
+      "host": "https://sepolia-rollup.arbitrum.io/rpc",
+      "id": "421614",
+      "sms": "https://sms.arbitrum-sepolia-testnet.iex.ec",
+      "resultProxy": "https://result-proxy.arbitrum-sepolia-testnet.iex.ec",
+      "iexecGateway": "https://gateway.arbitrum-sepolia-testnet.iex.ec",
+      "native": false,
+      "useNative": false
+    }
+  }
+}

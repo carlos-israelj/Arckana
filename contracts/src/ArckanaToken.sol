@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title ArcanaToken
+ * @title ArckanaToken
  * @notice Mock tokenized treasury fund (simulates BUIDL)
  * @dev 1 token = $1 USD, represents share in treasury fund
  */
-contract ArcanaToken is ERC20, Ownable {
+contract ArckanaToken is ERC20, Ownable {
     uint8 private constant DECIMALS = 6; // Same as USDC/BUIDL
 
-    constructor() ERC20("Arcana Treasury Token", "ARCANA") Ownable(msg.sender) {}
+    constructor() ERC20("Arckana Treasury Token", "ARCKANA") Ownable(msg.sender) {}
 
     function decimals() public pure override returns (uint8) {
         return DECIMALS;

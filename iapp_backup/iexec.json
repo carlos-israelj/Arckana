@@ -3,11 +3,11 @@
   "license": "MIT",
   "author": "Arckana Team",
   "app": {
-    "owner": "YOUR_ADDRESS_HERE",
+    "owner": "0x648a3e5510f55B4995fA5A22cCD62e2586ACb901",
     "name": "arckana-dividend-calculator",
     "type": "DOCKER",
-    "multiaddr": "YOUR_DOCKER_IMAGE_URL",
-    "checksum": "YOUR_IMAGE_CHECKSUM",
+    "multiaddr": "docker.io/carlosisraelj/arckana-dividend-calculator:3",
+    "checksum": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "mrenclave": {
       "provider": "SCONE",
       "version": "v5",

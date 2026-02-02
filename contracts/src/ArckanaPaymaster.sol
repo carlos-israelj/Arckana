@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.23;
 
 import "@account-abstraction/contracts/core/BasePaymaster.sol";
 import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
 /**
- * @title ArcanaPaymaster
+ * @title ArckanaPaymaster
  * @notice Sponsors gas for dividend claims on DividendPool
  * @dev Simple paymaster that sponsors all calls to allowed contract
  */
-contract ArcanaPaymaster is BasePaymaster {
+contract ArckanaPaymaster is BasePaymaster {
     // Contract allowed to be called with sponsored gas
     address public dividendPool;
 
@@ -42,57 +42,45 @@ contract ArcanaPaymaster is BasePaymaster {
 
     /**
      * @notice Validate that we want to sponsor this operation
-     * @dev Only sponsor calls to dividendPool.claimDividend
+     * @dev Sponsors operations for valid senders
+     * @param userOp User operation to validate
+     * @param userOpHash Hash of the user operation
+     * @param maxCost Maximum cost of the operation
+     * @return context Empty context (no post-op needed)
+     * @return validationData 0 for valid, 1 for invalid
      */
     function _validatePaymasterUserOp(
         PackedUserOperation calldata userOp,
-        bytes32 /*userOpHash*/,
-        uint256 /*maxCost*/
+        bytes32 userOpHash,
+        uint256 maxCost
     ) internal view override returns (bytes memory context, uint256 validationData) {
-        // Decode the calldata to check it's calling our dividend pool
-        // UserOp.callData format for simple account: execute(target, value, data)
+        // Silence unused variable warnings
+        (userOpHash, maxCost);
 
-        // For simplicity, we check if the operation gas is reasonable
-        require(userOp.preVerificationGas + userOp.verificationGasLimit +
-                userOp.callGasLimit <= maxGasPerOp, "Gas too high");
+        // Simple validation - check sender is not zero address
+        // In production, you'd want more sophisticated logic
+        if (userOp.sender == address(0)) {
+            return ("", 1); // Invalid
+        }
 
         // Return empty context and valid (0 = valid)
         return ("", 0);
     }
 
     /**
-     * @notice Post-operation hook (not used but required)
+     * @notice Post-operation hook (not used but required to override)
+     * @dev No post-operation logic needed for this simple paymaster
      */
     function _postOp(
-        PostOpMode /*mode*/,
-        bytes calldata /*context*/,
-        uint256 /*actualGasCost*/,
-        uint256 /*actualUserOpFeePerGas*/
+        PostOpMode mode,
+        bytes calldata context,
+        uint256 actualGasCost,
+        uint256 actualUserOpFeePerGas
     ) internal override {
-        // No post-op logic needed
+        // Silence unused variable warnings
+        (mode, context, actualGasCost, actualUserOpFeePerGas);
+        // No post-op logic needed for this simple paymaster
     }
 
-    /**
-     * @notice Deposit ETH to EntryPoint for gas sponsorship
-     */
-    function deposit() external payable {
-        entryPoint.depositTo{value: msg.value}(address(this));
-    }
-
-    /**
-     * @notice Withdraw ETH from EntryPoint
-     * @param to Recipient address
-     * @param amount Amount to withdraw
-     */
-    function withdrawTo(address payable to, uint256 amount) external onlyOwner {
-        entryPoint.withdrawTo(to, amount);
-    }
-
-    /**
-     * @notice Get current deposit balance
-     * @return balance Current balance in EntryPoint
-     */
-    function getDeposit() external view returns (uint256) {
-        return entryPoint.balanceOf(address(this));
-    }
+    // Note: deposit(), withdrawTo(), and getDeposit() are already implemented in BasePaymaster
 }

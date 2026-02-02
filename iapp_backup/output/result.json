@@ -1,0 +1,7 @@
+{
+  "success": false,
+  "error": "No valid balances found",
+  "merkle_root": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "holder_count": 0,
+  "total_distributed": 0
+}
