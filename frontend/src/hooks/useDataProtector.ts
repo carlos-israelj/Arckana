@@ -31,11 +31,9 @@ export function useDataProtector() {
       setError(null);
 
       try {
-        // Use Function constructor to bypass webpack static analysis
-        const loadDataProtector = new Function(
-          'return import("@iexec/dataprotector")'
-        );
-        const { IExecDataProtector } = await loadDataProtector();
+        // Dynamic import - webpack will handle this correctly
+        const dataProtectorModule = await import('@iexec/dataprotector');
+        const { IExecDataProtector } = dataProtectorModule;
 
         const provider = await connector.getProvider() as import('ethers').Eip1193Provider;
 
