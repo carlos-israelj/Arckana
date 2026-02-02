@@ -31,8 +31,11 @@ export function useDataProtector() {
       setError(null);
 
       try {
-        // Dynamic import to avoid SSR issues
-        const { IExecDataProtector } = await import('@iexec/dataprotector');
+        // Use Function constructor to bypass webpack static analysis
+        const loadDataProtector = new Function(
+          'return import("@iexec/dataprotector")'
+        );
+        const { IExecDataProtector } = await loadDataProtector();
 
         const provider = await connector.getProvider() as import('ethers').Eip1193Provider;
 
