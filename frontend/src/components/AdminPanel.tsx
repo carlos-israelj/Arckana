@@ -317,7 +317,7 @@ export default function AdminPanel() {
         {/* Submit Button */}
         <button
           onClick={handleStartDistribution}
-          disabled={!totalPool || !merkleRoot || isDistributing || (allowance && allowance === 0n)}
+          disabled={!totalPool || !merkleRoot || isDistributing || (allowance !== undefined && allowance === 0n)}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed py-3 rounded-lg font-medium transition"
         >
           {isDistributing ? 'Confirming Transaction...' : '📤 Start Distribution Round'}
