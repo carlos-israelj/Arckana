@@ -63,6 +63,16 @@ export const DIVIDEND_POOL_ABI = [
   },
   {
     type: 'function',
+    name: 'startDistributionRound',
+    inputs: [
+      { name: 'merkleRoot', type: 'bytes32' },
+      { name: 'totalPool', type: 'uint256' }
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable'
+  },
+  {
+    type: 'function',
     name: 'currentRound',
     inputs: [],
     outputs: [{ name: '', type: 'uint256' }],
