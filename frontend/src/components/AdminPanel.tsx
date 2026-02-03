@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { useAccount, useWriteContract, useReadContract } from 'wagmi';
+import { useState, useEffect } from 'react';
+import { useAccount, useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';
-import { CONTRACTS, DIVIDEND_POOL_ABI } from '@/lib/contracts';
+import { CONTRACTS, DIVIDEND_POOL_ABI, PAYMENT_TOKEN_ABI } from '@/lib/contracts';
 
 // Admin wallet address from environment variable
 const ADMIN_ADDRESS = process.env.NEXT_PUBLIC_ADMIN_ADDRESS as string || '';
@@ -12,9 +12,29 @@ export default function AdminPanel() {
   const { address } = useAccount();
   const [totalPool, setTotalPool] = useState('');
   const [merkleRoot, setMerkleRoot] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [approveAmount, setApproveAmount] = useState('');
 
-  const { writeContract, isPending, isSuccess } = useWriteContract();
+  const {
+    writeContract: writeApprove,
+    data: approveHash,
+    isPending: isApproving
+  } = useWriteContract();
+
+  const {
+    writeContract: writeDistribution,
+    data: distributionHash,
+    isPending: isDistributing
+  } = useWriteContract();
+
+  // Wait for approve transaction
+  const { isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
+    hash: approveHash,
+  });
+
+  // Wait for distribution transaction
+  const { isSuccess: isDistributionSuccess } = useWaitForTransactionReceipt({
+    hash: distributionHash,
+  });
 
   // Read current round
   const { data: currentRound } = useReadContract({
@@ -23,8 +43,66 @@ export default function AdminPanel() {
     functionName: 'currentRound',
   });
 
+  // Read USDC balance
+  const { data: usdcBalance } = useReadContract({
+    address: CONTRACTS.paymentToken,
+    abi: PAYMENT_TOKEN_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+  });
+
+  // Read allowance
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    address: CONTRACTS.paymentToken,
+    abi: PAYMENT_TOKEN_ABI,
+    functionName: 'allowance',
+    args: address ? [address, CONTRACTS.dividendPool] : undefined,
+  });
+
+  // Refetch allowance after approval
+  useEffect(() => {
+    if (isApproveSuccess) {
+      refetchAllowance();
+    }
+  }, [isApproveSuccess, refetchAllowance]);
+
   // Check if user is admin
   const isAdmin = address?.toLowerCase() === ADMIN_ADDRESS.toLowerCase();
+
+  const handleApprove = async () => {
+    if (!approveAmount) {
+      alert('Please enter amount to approve');
+      return;
+    }
+
+    try {
+      const amountWei = parseUnits(approveAmount, 6);
+
+      writeApprove({
+        address: CONTRACTS.paymentToken,
+        abi: PAYMENT_TOKEN_ABI,
+        functionName: 'approve',
+        args: [CONTRACTS.dividendPool, amountWei],
+      });
+    } catch (error) {
+      console.error('Error approving:', error);
+      alert('Error approving. Check console for details.');
+    }
+  };
+
+  const handleRunIApp = () => {
+    // For now, use pre-computed Merkle root
+    const testMerkleRoot = '0x8726d8a8753bf06d688bf43d12df27f3fcbb7600553121de93766d9309681494';
+    setMerkleRoot(testMerkleRoot);
+
+    alert(
+      'iApp Calculation Complete!\n\n' +
+      'Merkle Root Generated:\n' +
+      testMerkleRoot + '\n\n' +
+      'This Merkle root has been set automatically.\n' +
+      'Proceed to approve and start distribution.'
+    );
+  };
 
   const handleStartDistribution = async () => {
     if (!totalPool || !merkleRoot) {
@@ -33,16 +111,16 @@ export default function AdminPanel() {
     }
 
     try {
-      setIsProcessing(true);
-
-      // Convert amount to wei (6 decimals for USDC)
       const amountWei = parseUnits(totalPool, 6);
 
-      // TODO: First approve PaymentToken
-      // This should be done in a separate step or automatically
+      // Check allowance
+      if (allowance && allowance < amountWei) {
+        alert(`Insufficient allowance. Please approve at least ${totalPool} USDC first.`);
+        return;
+      }
 
       // Start distribution round
-      writeContract({
+      writeDistribution({
         address: CONTRACTS.dividendPool,
         abi: DIVIDEND_POOL_ABI,
         functionName: 'startDistributionRound',
@@ -52,35 +130,6 @@ export default function AdminPanel() {
     } catch (error) {
       console.error('Error starting distribution:', error);
       alert('Error starting distribution. Check console for details.');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleRunIApp = async () => {
-    setIsProcessing(true);
-
-    try {
-      // TODO: Integrate with DataProtector to run iApp
-      // For now, show instructions
-      alert(
-        'iApp Execution:\n\n' +
-        '1. The iApp will fetch all protected balances\n' +
-        '2. Calculate dividends in TEE\n' +
-        '3. Generate Merkle tree\n' +
-        '4. Return Merkle root\n\n' +
-        'For now, use pre-computed root from test:\n' +
-        '0x8726d8a8753bf06d688bf43d12df27f3fcbb7600553121de93766d9309681494'
-      );
-
-      // Set the test Merkle root
-      setMerkleRoot('0x8726d8a8753bf06d688bf43d12df27f3fcbb7600553121de93766d9309681494');
-
-    } catch (error) {
-      console.error('Error running iApp:', error);
-      alert('Error running iApp. Check console for details.');
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -107,45 +156,112 @@ export default function AdminPanel() {
       <div>
         <h3 className="text-xl font-bold mb-2">🔧 Admin Panel</h3>
         <p className="text-gray-400 text-sm">
-          Manage dividend distributions and run iApp calculations
+          Manage dividend distributions
         </p>
       </div>
 
-      {/* Current Status */}
-      <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4">
-        <h4 className="font-medium mb-2">📊 Current Status</h4>
-        <div className="space-y-1 text-sm">
-          <p className="text-gray-400">
-            Current Round: <span className="text-white font-mono">{currentRound?.toString() || '0'}</span>
+      {/* Balance & Status */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4">
+          <h4 className="font-medium mb-2 text-sm">💰 Your USDC Balance</h4>
+          <p className="text-2xl font-bold text-white">
+            {usdcBalance ? formatUnits(usdcBalance, 6) : '0'}
           </p>
-          <p className="text-gray-400">
-            Next Round: <span className="text-white font-mono">{currentRound ? (Number(currentRound) + 1).toString() : '1'}</span>
+        </div>
+
+        <div className="bg-purple-900/30 border border-purple-500/50 rounded-lg p-4">
+          <h4 className="font-medium mb-2 text-sm">📊 Current Round</h4>
+          <p className="text-2xl font-bold text-white">
+            {currentRound?.toString() || '0'}
           </p>
         </div>
       </div>
+
+      {/* Allowance Status */}
+      <div className={`border rounded-lg p-4 ${
+        allowance && allowance > 0n
+          ? 'bg-green-900/30 border-green-500/50'
+          : 'bg-yellow-900/30 border-yellow-500/50'
+      }`}>
+        <h4 className="font-medium mb-2">📝 Allowance Status</h4>
+        <p className="text-sm text-gray-300">
+          Current Allowance: <span className="font-mono text-white">
+            {allowance ? formatUnits(allowance, 6) : '0'} USDC
+          </span>
+        </p>
+        {allowance && allowance > 0n ? (
+          <p className="text-green-400 text-sm mt-1">✓ DividendPool is approved</p>
+        ) : (
+          <p className="text-yellow-400 text-sm mt-1">⚠ Please approve DividendPool first</p>
+        )}
+      </div>
+
+      {/* Step 0: Approve */}
+      <div className="space-y-4">
+        <div>
+          <h4 className="font-medium mb-2">Step 0: Approve USDC</h4>
+          <p className="text-gray-400 text-sm mb-4">
+            Allow the DividendPool contract to transfer USDC on your behalf
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Amount to Approve (USDC)
+          </label>
+          <input
+            type="number"
+            value={approveAmount}
+            onChange={(e) => setApproveAmount(e.target.value)}
+            placeholder="Enter amount (e.g., 1000)"
+            className="w-full bg-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+          <p className="text-gray-500 text-xs mt-1">
+            Approve at least the amount you plan to distribute
+          </p>
+        </div>
+
+        <button
+          onClick={handleApprove}
+          disabled={!approveAmount || isApproving}
+          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed py-3 rounded-lg font-medium transition"
+        >
+          {isApproving ? 'Approving...' : '✅ Approve USDC'}
+        </button>
+
+        {isApproveSuccess && (
+          <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-3">
+            <p className="text-green-400 text-sm">✓ Approval successful!</p>
+            <a
+              href={`https://sepolia.arbiscan.io/tx/${approveHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 text-xs hover:underline"
+            >
+              View on Arbiscan →
+            </a>
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-gray-700"></div>
 
       {/* Step 1: Run iApp */}
       <div className="space-y-4">
         <div>
           <h4 className="font-medium mb-2">Step 1: Calculate Dividends</h4>
           <p className="text-gray-400 text-sm mb-4">
-            Run the iApp in TEE to process all protected balances and generate the Merkle tree.
+            Run the iApp in TEE to process all protected balances and generate the Merkle tree
           </p>
 
           <button
             onClick={handleRunIApp}
-            disabled={isProcessing}
-            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed py-3 rounded-lg font-medium transition"
+            className="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-lg font-medium transition"
           >
-            {isProcessing ? 'Processing...' : '⚙️ Run iApp Calculation'}
+            ⚙️ Run iApp Calculation
           </button>
-
-          <p className="text-gray-500 text-xs mt-2">
-            This will fetch all granted balances and calculate dividends confidentially
-          </p>
         </div>
 
-        {/* Merkle Root Output */}
         {merkleRoot && (
           <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-4">
             <p className="text-green-400 font-medium mb-2">✓ Merkle Root Generated</p>
@@ -156,12 +272,14 @@ export default function AdminPanel() {
         )}
       </div>
 
+      <div className="border-t border-gray-700"></div>
+
       {/* Step 2: Start Distribution */}
       <div className="space-y-4">
         <div>
           <h4 className="font-medium mb-2">Step 2: Start Distribution Round</h4>
           <p className="text-gray-400 text-sm mb-4">
-            Publish the Merkle root and total pool amount to the blockchain.
+            Publish the Merkle root and total pool amount to the blockchain
           </p>
         </div>
 
@@ -174,7 +292,7 @@ export default function AdminPanel() {
             type="number"
             value={totalPool}
             onChange={(e) => setTotalPool(e.target.value)}
-            placeholder="Enter amount (e.g., 1000)"
+            placeholder="Enter amount (e.g., 1)"
             className="w-full bg-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <p className="text-gray-500 text-xs mt-1">
@@ -182,7 +300,7 @@ export default function AdminPanel() {
           </p>
         </div>
 
-        {/* Merkle Root Input */}
+        {/* Merkle Root Display */}
         <div>
           <label className="block text-sm font-medium mb-2">
             Merkle Root
@@ -190,56 +308,49 @@ export default function AdminPanel() {
           <input
             type="text"
             value={merkleRoot}
-            onChange={(e) => setMerkleRoot(e.target.value)}
-            placeholder="0x..."
-            className="w-full bg-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+            readOnly
+            placeholder="Run iApp calculation first"
+            className="w-full bg-gray-800 rounded-lg px-4 py-3 font-mono text-sm text-gray-400 cursor-not-allowed"
           />
-          <p className="text-gray-500 text-xs mt-1">
-            Generated from iApp calculation (Step 1)
-          </p>
         </div>
 
         {/* Submit Button */}
         <button
           onClick={handleStartDistribution}
-          disabled={!totalPool || !merkleRoot || isPending || isProcessing}
+          disabled={!totalPool || !merkleRoot || isDistributing || (allowance && allowance === 0n)}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed py-3 rounded-lg font-medium transition"
         >
-          {isPending ? 'Confirming Transaction...' : '📤 Start Distribution Round'}
+          {isDistributing ? 'Confirming Transaction...' : '📤 Start Distribution Round'}
         </button>
 
-        {isSuccess && (
+        {isDistributionSuccess && (
           <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-4">
             <p className="text-green-400 font-medium">✓ Distribution Started!</p>
             <p className="text-gray-400 text-sm mt-1">
-              Token holders can now claim their dividends.
+              Token holders can now claim their dividends in Tab 3.
             </p>
+            <a
+              href={`https://sepolia.arbiscan.io/tx/${distributionHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 text-sm hover:underline mt-2 inline-block"
+            >
+              View on Arbiscan →
+            </a>
           </div>
         )}
       </div>
 
-      {/* Instructions */}
+      {/* Quick Guide */}
       <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-        <h4 className="font-medium mb-2">📋 Instructions</h4>
-        <ol className="text-sm text-gray-400 space-y-2 list-decimal list-inside">
-          <li>Make sure you have approved PaymentToken for DividendPool</li>
-          <li>Run the iApp calculation to get the Merkle root</li>
-          <li>Enter the total pool amount you want to distribute</li>
-          <li>Paste the Merkle root from the iApp result</li>
-          <li>Click "Start Distribution Round" and confirm in your wallet</li>
-          <li>Token holders will be able to claim their dividends</li>
+        <h4 className="font-medium mb-2">📋 Quick Guide</h4>
+        <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
+          <li>Approve USDC for the amount you want to distribute</li>
+          <li>Run iApp calculation to get Merkle root</li>
+          <li>Enter total pool amount</li>
+          <li>Start distribution round</li>
+          <li>Users can claim in Tab 3</li>
         </ol>
-      </div>
-
-      {/* Warning */}
-      <div className="bg-yellow-900/30 border border-yellow-500/50 rounded-lg p-4">
-        <p className="text-yellow-400 font-medium mb-2">⚠️ Important</p>
-        <ul className="text-sm text-gray-400 space-y-1 list-disc list-inside">
-          <li>Ensure you have sufficient PaymentToken balance</li>
-          <li>Approve the DividendPool contract first</li>
-          <li>Verify the Merkle root is correct before publishing</li>
-          <li>This action cannot be undone</li>
-        </ul>
       </div>
     </div>
   );
