@@ -13,9 +13,14 @@ const ProtectBalance = dynamic(() => import('@/components/ProtectBalance'), {
   loading: () => <div className="text-center text-gray-400">Loading...</div>
 });
 
+const AdminPanel = dynamic(() => import('@/components/AdminPanel'), {
+  ssr: false,
+  loading: () => <div className="text-center text-gray-400">Loading...</div>
+});
+
 export default function Home() {
   const { isConnected } = useAccount();
-  const [activeTab, setActiveTab] = useState<'protect' | 'status' | 'claim'>('protect');
+  const [activeTab, setActiveTab] = useState<'protect' | 'status' | 'claim' | 'admin'>('protect');
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
@@ -46,11 +51,12 @@ export default function Home() {
       {isConnected ? (
         <section className="container mx-auto px-4 pb-12">
           {/* Tabs */}
-          <div className="flex justify-center gap-4 mb-8">
+          <div className="flex justify-center gap-4 mb-8 flex-wrap">
             {[
               { id: 'protect', label: '1. Protect Balance', icon: '🔐' },
               { id: 'status', label: '2. Distribution', icon: '📊' },
               { id: 'claim', label: '3. Claim', icon: '💰' },
+              { id: 'admin', label: '🔧 Admin', icon: '⚙️' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -71,6 +77,7 @@ export default function Home() {
             {activeTab === 'protect' && <ProtectBalance />}
             {activeTab === 'status' && <DistributionStatus />}
             {activeTab === 'claim' && <ClaimDividend />}
+            {activeTab === 'admin' && <AdminPanel />}
           </div>
         </section>
       ) : (
