@@ -34,15 +34,42 @@ export default function ClaimDividend() {
     hash,
   });
 
-  // Load claim data from local storage
+  // Load claim data from local storage or distribution data
   useEffect(() => {
     if (address) {
+      // First try to load specific claim data for this address
       const stored = localStorage.getItem(`arcana-claim-${address}`);
       if (stored) {
         setClaimData(JSON.parse(stored));
+        return;
+      }
+
+      // If not found, try to find it in the distribution data
+      const distributionData = localStorage.getItem('arckana-distribution');
+      if (distributionData) {
+        try {
+          const distribution = JSON.parse(distributionData);
+          // Find the entry for this address
+          const userEntry = distribution.find(
+            (entry: any) => entry.holder.toLowerCase() === address.toLowerCase()
+          );
+
+          if (userEntry) {
+            const data = {
+              amount: userEntry.amount.toString(),
+              proof: userEntry.proof,
+            };
+            setClaimData(data);
+            // Save it for quick access next time
+            localStorage.setItem(`arcana-claim-${address}`, JSON.stringify(data));
+            console.log('Found claim data from distribution:', data);
+          }
+        } catch (error) {
+          console.error('Error parsing distribution data:', error);
+        }
       }
     }
-  }, [address]);
+  }, [address, currentRound]);
 
   const handleClaim = async () => {
     if (!claimData || !address || !currentRound) return;
@@ -53,6 +80,8 @@ export default function ClaimDividend() {
         abi: DIVIDEND_POOL_ABI,
         functionName: 'claimDividend',
         args: [currentRound, BigInt(claimData.amount), claimData.proof as `0x${string}`[]],
+        maxFeePerGas: 100000000n,
+        maxPriorityFeePerGas: 100000n,
       });
     } catch (error) {
       console.error('Claim error:', error);
@@ -60,16 +89,50 @@ export default function ClaimDividend() {
     }
   };
 
+  // Refresh claim data from distribution
+  const handleRefreshData = () => {
+    if (!address) return;
+
+    const distributionData = localStorage.getItem('arckana-distribution');
+    if (!distributionData) {
+      alert('No distribution data found. Please wait for admin to run the distribution.');
+      return;
+    }
+
+    try {
+      const distribution = JSON.parse(distributionData);
+      const userEntry = distribution.find(
+        (entry: any) => entry.holder.toLowerCase() === address.toLowerCase()
+      );
+
+      if (userEntry) {
+        const data = {
+          amount: userEntry.amount.toString(),
+          proof: userEntry.proof,
+        };
+        setClaimData(data);
+        localStorage.setItem(`arcana-claim-${address}`, JSON.stringify(data));
+        alert('Claim data found and loaded successfully!');
+      } else {
+        alert('No dividend found for your address in this distribution.');
+      }
+    } catch (error) {
+      console.error('Error parsing distribution data:', error);
+      alert('Error loading distribution data. Check console for details.');
+    }
+  };
+
   // For demo: Allow manual entry of claim data
   const handleManualEntry = () => {
-    const amount = prompt('Enter your dividend amount (from iApp result):');
-    const proofStr = prompt('Enter your proof (comma-separated hashes):');
+    const amount = prompt('Enter your dividend amount (in base units, e.g., 500000000):');
+    const proofStr = prompt('Enter your proof (comma-separated hashes with 0x prefix):');
 
     if (amount && proofStr) {
       const proof = proofStr.split(',').map(p => p.trim());
       const data = { amount, proof };
       setClaimData(data);
       localStorage.setItem(`arcana-claim-${address}`, JSON.stringify(data));
+      alert('Claim data set successfully!');
     }
   };
 
@@ -131,9 +194,16 @@ export default function ClaimDividend() {
           <div className="bg-yellow-900/30 border border-yellow-500/50 rounded-lg p-4">
             <p className="text-yellow-400 font-medium">No claim data found</p>
             <p className="text-gray-400 text-sm mt-1">
-              Wait for the distribution to complete, or enter your claim data manually.
+              Wait for the distribution to complete, or try refreshing the data.
             </p>
           </div>
+
+          <button
+            onClick={handleRefreshData}
+            className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-medium transition"
+          >
+            🔄 Refresh Claim Data
+          </button>
 
           <button
             onClick={handleManualEntry}

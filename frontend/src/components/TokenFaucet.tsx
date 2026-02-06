@@ -41,6 +41,8 @@ export default function TokenFaucet() {
         abi: ARCKANA_TOKEN_ABI,
         functionName: 'mint',
         args: [address, amountWei],
+        // Let wagmi/viem automatically estimate gas prices from the network
+        // This prevents "max fee per gas less than block base fee" errors
       });
     } catch (error) {
       console.error('Error minting tokens:', error);
@@ -201,8 +203,32 @@ export default function TokenFaucet() {
       {/* Add to Wallet Button */}
       <button
         onClick={async () => {
+          const ethereum = (window as any).ethereum;
+
+          if (!ethereum) {
+            alert('No Ethereum wallet detected. Please install MetaMask.');
+            return;
+          }
+
+          // Detect if it's Rabby Wallet
+          const isRabby = ethereum.isRabby;
+
+          // Show manual instructions for Rabby
+          if (isRabby) {
+            alert(
+              '⚠️ Rabby Wallet - Add Token Manually\n\n' +
+              'Please add the token manually in Rabby:\n\n' +
+              `Address: ${CONTRACTS.arckanaToken}\n` +
+              'Symbol: ARCK\n' +
+              'Decimals: 6\n\n' +
+              'Go to: Assets → Add Custom Token'
+            );
+            return;
+          }
+
+          // For MetaMask, use wallet_watchAsset
           try {
-            await (window as any).ethereum?.request({
+            const result = await ethereum.request({
               method: 'wallet_watchAsset',
               params: {
                 type: 'ERC20',
@@ -210,17 +236,32 @@ export default function TokenFaucet() {
                   address: CONTRACTS.arckanaToken,
                   symbol: 'ARCK',
                   decimals: 6,
-                  image: 'https://arckana.lat/logo.png', // Optional: Add logo
                 },
               },
             });
-          } catch (error) {
+
+            if (result) {
+              alert('✅ ARCK token added to your wallet!');
+            }
+          } catch (error: any) {
             console.error('Error adding token to wallet:', error);
+
+            if (error.code === 4001) {
+              alert('Token addition was cancelled.');
+            } else {
+              alert(
+                'Could not add token automatically.\n\n' +
+                'Add it manually:\n' +
+                `Address: ${CONTRACTS.arckanaToken}\n` +
+                'Symbol: ARCK\n' +
+                'Decimals: 6'
+              );
+            }
           }
         }}
         className="w-full mt-4 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm transition"
       >
-        ➕ Add ARCK to Wallet
+        ➕ Add ARCK to Wallet (MetaMask)
       </button>
     </div>
   );

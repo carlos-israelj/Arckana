@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';
-import { CONTRACTS, DIVIDEND_POOL_ABI, PAYMENT_TOKEN_ABI } from '@/lib/contracts';
+import { CONTRACTS, DIVIDEND_POOL_ABI, PAYMENT_TOKEN_ABI, IAPP_ADDRESS } from '@/lib/contracts';
+import { useDataProtector } from '@/hooks/useDataProtector';
 
 // Admin wallet address from environment variable
 const ADMIN_ADDRESS = process.env.NEXT_PUBLIC_ADMIN_ADDRESS as string || '';
@@ -13,6 +14,9 @@ export default function AdminPanel() {
   const [totalPool, setTotalPool] = useState('');
   const [merkleRoot, setMerkleRoot] = useState('');
   const [approveAmount, setApproveAmount] = useState('');
+  const [iappStatus, setIappStatus] = useState<string>('');
+
+  const { dataProtectorCore, isReady } = useDataProtector();
 
   const {
     writeContract: writeApprove,
@@ -83,6 +87,8 @@ export default function AdminPanel() {
         abi: PAYMENT_TOKEN_ABI,
         functionName: 'approve',
         args: [CONTRACTS.dividendPool, amountWei],
+        maxFeePerGas: 100000000n,
+        maxPriorityFeePerGas: 100000n,
       });
     } catch (error) {
       console.error('Error approving:', error);
@@ -90,18 +96,131 @@ export default function AdminPanel() {
     }
   };
 
-  const handleRunIApp = () => {
-    // For now, use pre-computed Merkle root
-    const testMerkleRoot = '0x8726d8a8753bf06d688bf43d12df27f3fcbb7600553121de93766d9309681494';
-    setMerkleRoot(testMerkleRoot);
+  const handleRunIApp = async () => {
+    if (!IAPP_ADDRESS) {
+      alert('iApp not deployed. Please set NEXT_PUBLIC_IAPP_ADDRESS.');
+      return;
+    }
 
-    alert(
-      'iApp Calculation Complete!\n\n' +
-      'Merkle Root Generated:\n' +
-      testMerkleRoot + '\n\n' +
-      'This Merkle root has been set automatically.\n' +
-      'Proceed to approve and start distribution.'
-    );
+    if (!totalPool) {
+      alert('Please enter the total pool amount first.');
+      return;
+    }
+
+    if (!dataProtectorCore) {
+      alert('DataProtector not initialized. Please connect your wallet.');
+      return;
+    }
+
+    try {
+      setIappStatus('Fetching protected data...');
+
+      // Get all protected data (holders who have protected their balances)
+      const protectedDataList = await dataProtectorCore.fetchProtectedData({
+        owner: address, // Only fetch data owned by current user for testing
+      });
+
+      console.log('Protected data list:', protectedDataList);
+
+      if (!protectedDataList || protectedDataList.length === 0) {
+        alert('No protected data found. Users need to protect their balances first (Tab 1).');
+        setIappStatus('');
+        return;
+      }
+
+      setIappStatus(`Found ${protectedDataList.length} protected data items. Preparing execution...`);
+
+      // Convert totalPool to base units (6 decimals for USDC)
+      const totalPoolBaseUnits = parseUnits(totalPool, 6).toString();
+      console.log('Total pool in base units:', totalPoolBaseUnits);
+
+      // Extract addresses from protected data
+      const protectedDataAddresses = protectedDataList.map((pd: any) => pd.address);
+      console.log('Protected data addresses:', protectedDataAddresses);
+
+      setIappStatus('Executing iApp in TEE...');
+
+      // Execute the iApp with protected data
+      const result = await dataProtectorCore.processProtectedData({
+        protectedData: protectedDataAddresses[0], // Process first one or array
+        app: IAPP_ADDRESS,
+        args: totalPoolBaseUnits, // Pass total pool amount in base units
+        workerpool: '0xB967057a21dc6A66A29721d96b8Aa7454B7c383F', // Arbitrum Sepolia prod workerpool
+        onStatusUpdate: ({ title, isDone }: { title: string; isDone: boolean }) => {
+          setIappStatus(title);
+          console.log(`iApp Status: ${title}, Done: ${isDone}`);
+        },
+      });
+
+      console.log('iApp execution result:', result);
+
+      setIappStatus('Fetching task result...');
+
+      // Extract taskId from result
+      const taskId = (result as any).taskId;
+      console.log('Task ID:', taskId);
+
+      // Wait a bit for the task to complete
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Try to fetch the result
+      try {
+        const taskResult = await dataProtectorCore.fetchResultFromTask({
+          taskId: taskId,
+        });
+
+        console.log('Task result:', taskResult);
+
+        // Extract merkle root from result
+        if (taskResult && taskResult.result && taskResult.result.merkle_root) {
+          const fetchedMerkleRoot = taskResult.result.merkle_root;
+          setMerkleRoot(fetchedMerkleRoot);
+
+          // Also save distribution data for claims
+          if (taskResult.result.distribution) {
+            localStorage.setItem('arckana-distribution', JSON.stringify(taskResult.result.distribution));
+            console.log('Saved distribution data for claims');
+          }
+
+          alert(
+            'iApp Execution Complete! ✅\n\n' +
+            `Merkle Root: ${fetchedMerkleRoot}\n\n` +
+            `Holders: ${taskResult.result.holder_count || 'N/A'}\n` +
+            `Total Distributed: ${totalPool} USDC\n\n` +
+            'The Merkle root has been set automatically.\n' +
+            'You can now proceed to Step 2 to start the distribution round.'
+          );
+        } else {
+          // Result not ready yet
+          alert(
+            'iApp Execution Started! ⏳\n\n' +
+            `Task ID: ${taskId}\n\n` +
+            'The task is still processing. Please:\n' +
+            '1. Wait a few minutes for task completion\n' +
+            '2. Check task results on iExec Explorer\n' +
+            '3. The Merkle root will appear here automatically\n\n' +
+            `Explorer: https://explorer.iex.ec/bellecour/task/${taskId}`
+          );
+        }
+      } catch (fetchError) {
+        console.log('Could not fetch result yet:', fetchError);
+        alert(
+          'iApp Execution Started! ⏳\n\n' +
+          `Task ID: ${taskId}\n\n` +
+          'The task is processing in the TEE.\n' +
+          'Please wait a few minutes and check the iExec Explorer:\n\n' +
+          `https://explorer.iex.ec/bellecour/task/${taskId}\n\n` +
+          'Once complete, you can manually enter the Merkle root.'
+        );
+      }
+
+      setIappStatus('');
+
+    } catch (error: any) {
+      console.error('Error running iApp:', error);
+      alert(`Error running iApp: ${error.message || 'Unknown error'}\n\nCheck console for details.`);
+      setIappStatus('');
+    }
   };
 
   const handleStartDistribution = async () => {
@@ -125,6 +244,8 @@ export default function AdminPanel() {
         abi: DIVIDEND_POOL_ABI,
         functionName: 'startDistributionRound',
         args: [merkleRoot as `0x${string}`, amountWei],
+        maxFeePerGas: 100000000n,
+        maxPriorityFeePerGas: 100000n,
       });
 
     } catch (error) {
@@ -256,15 +377,22 @@ export default function AdminPanel() {
 
           <button
             onClick={handleRunIApp}
-            className="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-lg font-medium transition"
+            disabled={!isReady || !!iappStatus}
+            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed py-3 rounded-lg font-medium transition"
           >
-            ⚙️ Run iApp Calculation
+            {iappStatus ? iappStatus : '⚙️ Run iApp Calculation'}
           </button>
         </div>
 
+        {iappStatus && (
+          <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4">
+            <p className="text-blue-400 font-medium">⏳ {iappStatus}</p>
+          </div>
+        )}
+
         {merkleRoot && (
           <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-4">
-            <p className="text-green-400 font-medium mb-2">✓ Merkle Root Generated</p>
+            <p className="text-green-400 font-medium mb-2">✓ Merkle Root Set</p>
             <p className="text-gray-300 text-sm font-mono break-all">
               {merkleRoot}
             </p>
@@ -300,7 +428,7 @@ export default function AdminPanel() {
           </p>
         </div>
 
-        {/* Merkle Root Display */}
+        {/* Merkle Root Input */}
         <div>
           <label className="block text-sm font-medium mb-2">
             Merkle Root
@@ -308,10 +436,13 @@ export default function AdminPanel() {
           <input
             type="text"
             value={merkleRoot}
-            readOnly
-            placeholder="Run iApp calculation first"
-            className="w-full bg-gray-800 rounded-lg px-4 py-3 font-mono text-sm text-gray-400 cursor-not-allowed"
+            onChange={(e) => setMerkleRoot(e.target.value)}
+            placeholder="Run iApp calculation or paste manually"
+            className="w-full bg-gray-700 rounded-lg px-4 py-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          <p className="text-gray-500 text-xs mt-1">
+            Will be set automatically after iApp execution, or paste manually
+          </p>
         </div>
 
         {/* Submit Button */}

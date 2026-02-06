@@ -154,3 +154,49 @@ export function useGrantAccess() {
     status,
   };
 }
+
+/**
+ * Hook for processing protected data with iApp
+ */
+export function useProcessProtectedData() {
+  const { dataProtectorCore } = useDataProtector();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [status, setStatus] = useState<{ title: string; isDone: boolean } | null>(null);
+
+  const processProtectedData = async (params: {
+    app: string;
+    protectedData: string[];
+    totalPoolAmount: string;
+  }) => {
+    if (!dataProtectorCore) {
+      throw new Error('DataProtector not initialized');
+    }
+
+    setIsProcessing(true);
+    setStatus(null);
+
+    try {
+      const result = await dataProtectorCore.processProtectedData({
+        protectedData: params.protectedData,
+        app: params.app,
+        args: params.totalPoolAmount, // Pass total pool amount as args
+        workerpool: '0xB967057a21dc6A66A29721d96b8Aa7454B7c383F', // Arbitrum Sepolia prod workerpool
+        onStatusUpdate: ({ title, isDone }: { title: string; isDone: boolean }) => {
+          setStatus({ title, isDone });
+          console.log(`Process Protected Data Status: ${title}, Done: ${isDone}`);
+        },
+      });
+
+      return result;
+    } finally {
+      setIsProcessing(false);
+      setStatus(null);
+    }
+  };
+
+  return {
+    processProtectedData,
+    isProcessing,
+    status,
+  };
+}
