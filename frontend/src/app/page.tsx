@@ -18,9 +18,14 @@ const AdminPanel = dynamic(() => import('@/components/AdminPanel'), {
   loading: () => <div className="text-center text-gray-400">Loading...</div>
 });
 
+const TokenFaucet = dynamic(() => import('@/components/TokenFaucet'), {
+  ssr: false,
+  loading: () => <div className="text-center text-gray-400">Loading...</div>
+});
+
 export default function Home() {
   const { isConnected } = useAccount();
-  const [activeTab, setActiveTab] = useState<'protect' | 'status' | 'claim' | 'admin'>('protect');
+  const [activeTab, setActiveTab] = useState<'faucet' | 'protect' | 'status' | 'claim' | 'admin'>('faucet');
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
@@ -53,6 +58,7 @@ export default function Home() {
           {/* Tabs */}
           <div className="flex justify-center gap-4 mb-8 flex-wrap">
             {[
+              { id: 'faucet', label: '0. Get Tokens', icon: '🎁' },
               { id: 'protect', label: '1. Protect Balance', icon: '🔐' },
               { id: 'status', label: '2. Distribution', icon: '📊' },
               { id: 'claim', label: '3. Claim', icon: '💰' },
@@ -74,6 +80,7 @@ export default function Home() {
 
           {/* Tab Content */}
           <div className="max-w-2xl mx-auto bg-gray-800 rounded-xl p-6">
+            {activeTab === 'faucet' && <TokenFaucet />}
             {activeTab === 'protect' && <ProtectBalance />}
             {activeTab === 'status' && <DistributionStatus />}
             {activeTab === 'claim' && <ClaimDividend />}
