@@ -52,3 +52,5 @@ __pycache__/
 .backup/
 backup_*/
 iapp_backup_*/
+iapp_backup/
+iapp_old/
