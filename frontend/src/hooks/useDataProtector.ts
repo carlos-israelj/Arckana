@@ -35,9 +35,40 @@ export function useDataProtector() {
         const dataProtectorModule = await import('@iexec/dataprotector');
         const { IExecDataProtector } = dataProtectorModule;
 
-        const provider = await connector.getProvider() as import('ethers').Eip1193Provider;
+        const baseProvider = await connector.getProvider() as import('ethers').Eip1193Provider;
 
-        const dp = new IExecDataProtector(provider, {
+        // Create a wrapper provider that adds higher gas prices for Arbitrum Sepolia
+        const wrappedProvider = new Proxy(baseProvider, {
+          get(target, prop) {
+            if (prop === 'request') {
+              return async (args: { method: string; params?: any[] }) => {
+                // Intercept eth_sendTransaction to add gas configuration
+                if (args.method === 'eth_sendTransaction' && args.params?.[0]) {
+                  const tx = args.params[0];
+
+                  // Add gas configuration for Arbitrum Sepolia
+                  // Use higher values to ensure transactions go through
+                  const enhancedTx = {
+                    ...tx,
+                    maxFeePerGas: '0x5F5E100', // 100000000 wei = 0.1 gwei
+                    maxPriorityFeePerGas: '0xF4240', // 1000000 wei = 0.001 gwei
+                  };
+
+                  return target.request({
+                    method: args.method,
+                    params: [enhancedTx, ...(args.params.slice(1) || [])],
+                  });
+                }
+
+                return target.request(args);
+              };
+            }
+
+            return (target as any)[prop];
+          },
+        }) as import('ethers').Eip1193Provider;
+
+        const dp = new IExecDataProtector(wrappedProvider, {
           allowExperimentalNetworks: true, // Required for Arbitrum Sepolia
         });
 
