@@ -159,8 +159,8 @@ def load_protected_data(input_dir: str) -> List[Dict[str, Any]]:
 
             # Extract holder and balance using DataProtector deserializer
             holder = getValue('holder', 'string')
-            balance_str = getValue('balance', 'string')
-            balance = int(balance_str)
+            # Balance is stored as number, not string
+            balance = getValue('balance', 'number')
 
             protected_data.append({
                 'holder': holder,
