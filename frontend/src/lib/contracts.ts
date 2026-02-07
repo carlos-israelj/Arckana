@@ -1,18 +1,18 @@
 // Smart Contract Addresses - Arbitrum Sepolia
-// Deployed on 2026-01-30
+// Deployed on 2026-02-06
 
 export const CONTRACTS = {
   // Treasury Token (simulates tokenized treasury fund like BUIDL)
-  arckanaToken: '0xaF7B67b88128820Fae205A07aDC055ed509Bdb12' as `0x${string}`,
-  
+  arckanaToken: '0x97158e24465C30D09557e1853460c74D3ee00F5E' as `0x${string}`,
+
   // Payment Token (for dividend distributions - simulates USDC)
-  paymentToken: '0x71E3a04c9Ecc624656334756f70dAAA1fc4F985D' as `0x${string}`,
-  
+  paymentToken: '0xaDD672721dff93448A5701F0a55EcDb7cA512d1A' as `0x${string}`,
+
   // Dividend Distribution Pool (Merkle proof-based claims)
-  dividendPool: '0xfD0b399898efC0186E32eb81B630d7Cf7Bb6f217' as `0x${string}`,
-  
+  dividendPool: '0x51FEb9273B01d96C3cff5Ded91521248AaAc587B' as `0x${string}`,
+
   // ERC-4337 Paymaster (gas sponsorship for claims)
-  paymaster: '0x648B7FfD8a5Dd9C901B6569E7a0DC9A2eAF4c9F1' as `0x${string}`,
+  paymaster: '0xa3A7C33C21c6B347B220B174928609A7Ae74BD10' as `0x${string}`,
   
   // EntryPoint v0.7 (ERC-4337)
   entryPoint: '0x0000000071727De22E5E9d8BAf0edAc6f37dA032' as `0x${string}`,

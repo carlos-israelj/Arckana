@@ -5,6 +5,7 @@ import "forge-std/Script.sol";
 import "../src/ArckanaToken.sol";
 import "../src/DividendPool.sol";
 import "../src/ArckanaPaymaster.sol";
+import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
 contract DeployScript is Script {
     function run() external {
@@ -13,37 +14,29 @@ contract DeployScript is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy ArckanaToken (mock treasury token)
+        // 1. Deploy Arckana Token (treasury token)
         ArckanaToken arckanaToken = new ArckanaToken();
         console.log("ArckanaToken deployed at:", address(arckanaToken));
 
-        // Deploy payment token (for dividends) - in production, this would be USDC
-        // For demo, we'll deploy another token to represent USDC
+        // 2. Deploy Payment Token (for dividend payouts - another instance of ArckanaToken for testing)
         ArckanaToken paymentToken = new ArckanaToken();
         console.log("PaymentToken deployed at:", address(paymentToken));
 
-        // Deploy DividendPool
+        // 3. Deploy Dividend Pool
         DividendPool dividendPool = new DividendPool(address(paymentToken));
         console.log("DividendPool deployed at:", address(dividendPool));
 
-        // Deploy ArckanaPaymaster
-        ArckanaPaymaster paymaster = new ArckanaPaymaster(
-            IEntryPoint(entryPoint),
-            address(dividendPool)
-        );
+        // 4. Deploy Paymaster (for gasless transactions)
+        ArckanaPaymaster paymaster = new ArckanaPaymaster(IEntryPoint(entryPoint), address(dividendPool));
         console.log("ArckanaPaymaster deployed at:", address(paymaster));
-
-        // Fund paymaster with some ETH for gas sponsorship
-        paymaster.deposit{value: 0.1 ether}();
-        console.log("Paymaster funded with 0.1 ETH");
 
         vm.stopBroadcast();
 
-        // Output deployment info
-        console.log("\n=== Deployment Summary ===");
-        console.log("ArckanaToken:", address(arckanaToken));
-        console.log("PaymentToken:", address(paymentToken));
-        console.log("DividendPool:", address(dividendPool));
-        console.log("ArckanaPaymaster:", address(paymaster));
+        console.log("\n=== Deployment Complete ===");
+        console.log("Update these addresses in frontend/src/lib/contracts.ts:");
+        console.log("NEXT_PUBLIC_ARCANA_TOKEN_ADDRESS=", address(arckanaToken));
+        console.log("NEXT_PUBLIC_PAYMENT_TOKEN_ADDRESS=", address(paymentToken));
+        console.log("NEXT_PUBLIC_DIVIDEND_POOL_ADDRESS=", address(dividendPool));
+        console.log("NEXT_PUBLIC_PAYMASTER_ADDRESS=", address(paymaster));
     }
 }
