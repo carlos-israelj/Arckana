@@ -41,8 +41,10 @@ export default function TokenFaucet() {
         abi: ARCKANA_TOKEN_ABI,
         functionName: 'mint',
         args: [address, amountWei],
-        // Let wagmi/viem automatically estimate gas prices from the network
-        // This prevents "max fee per gas less than block base fee" errors
+        // Add gas configuration to handle Arbitrum Sepolia gas price fluctuations
+        gas: 200000n,
+        maxFeePerGas: 100000000n, // 0.1 gwei - higher than typical base fee
+        maxPriorityFeePerGas: 1000000n, // 0.001 gwei
       });
     } catch (error) {
       console.error('Error minting tokens:', error);
