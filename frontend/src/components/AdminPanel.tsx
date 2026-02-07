@@ -156,6 +156,11 @@ export default function AdminPanel() {
           onStatusUpdate: ({ title, isDone }: { title: string; isDone: boolean }) => {
             setIappStatus(title);
             console.log(`iApp Status: ${title}, Done: ${isDone}`);
+
+            // Try to capture taskId from REQUEST_TO_PROCESS_PROTECTED_DATA status
+            if (title === 'REQUEST_TO_PROCESS_PROTECTED_DATA' && isDone) {
+              console.log('Task should be created now, attempting to capture taskId...');
+            }
           },
         });
 
@@ -166,29 +171,67 @@ export default function AdminPanel() {
       } catch (execError: any) {
         // Task might have been created but monitoring failed
         console.error('Error during execution:', execError);
+        console.error('Error stack:', execError.stack);
+        console.error('Full error object:', JSON.stringify(execError, null, 2));
 
-        // Try to extract taskId from error or result
+        // Try to extract taskId from multiple possible locations in the error
         if (execError.result?.taskId) {
           taskId = execError.result.taskId;
         } else if (execError.taskId) {
           taskId = execError.taskId;
+        } else if (execError.context?.taskId) {
+          taskId = execError.context.taskId;
+        } else if (execError.originalError?.taskId) {
+          taskId = execError.originalError.taskId;
         }
+
+        // Check if this is an RPC monitoring error (task likely created successfully)
+        const isRpcError =
+          execError.message?.toLowerCase().includes('json-rpc') ||
+          execError.message?.toLowerCase().includes('missing revert data') ||
+          execError.message?.toLowerCase().includes('wait for task') ||
+          execError.message?.toLowerCase().includes('internal json-rpc') ||
+          execError.cause?.message?.toLowerCase().includes('json-rpc') ||
+          execError.cause?.message?.toLowerCase().includes('missing revert data');
 
         if (taskId) {
           console.log('Task ID extracted from error:', taskId);
           alert(
-            'iApp Task Created! ⏳\n\n' +
+            '✅ iApp Task Created Successfully!\n\n' +
             `Task ID: ${taskId}\n\n` +
-            'The task is running in the TEE.\n' +
-            'Due to RPC monitoring issues, please check the task status manually:\n\n' +
-            `https://explorer.iex.ec/arbitrum-sepolia-testnet/task/${taskId}\n\n` +
-            'Wait 2-3 minutes for completion, then check the explorer for results.'
+            `🔗 Check task status:\nhttps://explorer.iex.ec/arbitrum-sepolia-testnet/task/${taskId}\n\n` +
+            '⏳ The task is running in the TEE.\n' +
+            'Due to RPC monitoring issues, please:\n\n' +
+            '1. Click the link above to open the Explorer\n' +
+            '2. Wait 2-3 minutes for task completion\n' +
+            '3. Once COMPLETED, click "Show results" in Explorer\n' +
+            '4. Copy the merkle_root value\n' +
+            '5. Paste it in Step 2 below\n\n' +
+            '💡 Tip: Refresh the Explorer page to see status updates'
           );
           setIappStatus('');
           return;
         }
 
-        throw execError; // Re-throw if we couldn\'t extract taskId
+        // If we couldn't extract taskId but this looks like an RPC error
+        if (isRpcError) {
+          console.log('RPC error detected but no taskId found');
+          alert(
+            '⚠️ Task Likely Created, But Cannot Monitor\n\n' +
+            'The task was likely created successfully, but we cannot track it due to RPC issues.\n\n' +
+            `🔗 Check your recent tasks:\nhttps://explorer.iex.ec/arbitrum-sepolia-testnet/account/${address}\n\n` +
+            '📋 Next steps:\n' +
+            '1. Open the link above\n' +
+            '2. Find the most recent task (created just now)\n' +
+            '3. Wait 2-3 minutes for it to complete\n' +
+            '4. Get the merkle_root from task results\n' +
+            '5. Paste it in Step 2 below'
+          );
+          setIappStatus('');
+          return;
+        }
+
+        throw execError; // Re-throw if this doesn't look like an RPC error
       }
 
       setIappStatus('Fetching task result...');
@@ -227,24 +270,27 @@ export default function AdminPanel() {
         } else {
           // Result not ready yet
           alert(
-            'iApp Execution Started! ⏳\n\n' +
+            '⏳ iApp Execution Started!\n\n' +
             `Task ID: ${taskId}\n\n` +
-            'The task is still processing. Please:\n' +
-            '1. Wait a few minutes for task completion\n' +
+            `🔗 Explorer:\nhttps://explorer.iex.ec/arbitrum-sepolia-testnet/task/${taskId}\n\n` +
+            '📋 Next steps:\n' +
+            '1. Wait 2-3 minutes for task completion\n' +
             '2. Check task results on iExec Explorer\n' +
-            '3. The Merkle root will appear here automatically\n\n' +
-            `Explorer: https://explorer.iex.ec/bellecour/task/${taskId}`
+            '3. Copy the merkle_root when ready\n' +
+            '4. Paste it in Step 2 below'
           );
         }
       } catch (fetchError) {
         console.log('Could not fetch result yet:', fetchError);
         alert(
-          'iApp Execution Started! ⏳\n\n' +
+          '⏳ iApp Task Running in TEE\n\n' +
           `Task ID: ${taskId}\n\n` +
-          'The task is processing in the TEE.\n' +
-          'Please wait a few minutes and check the iExec Explorer:\n\n' +
-          `https://explorer.iex.ec/bellecour/task/${taskId}\n\n` +
-          'Once complete, you can manually enter the Merkle root.'
+          `🔗 Explorer:\nhttps://explorer.iex.ec/arbitrum-sepolia-testnet/task/${taskId}\n\n` +
+          '📋 Next steps:\n' +
+          '1. Wait 2-3 minutes for completion\n' +
+          '2. Check the Explorer link above\n' +
+          '3. Once COMPLETED, get the merkle_root\n' +
+          '4. Paste it manually in Step 2 below'
         );
       }
 
@@ -254,18 +300,31 @@ export default function AdminPanel() {
       console.error('Error running iApp:', error);
 
       // Check if this is a monitoring/RPC error but task might have been created
-      if (error.message?.includes('JSON-RPC') || error.message?.includes('wait for task')) {
+      const isRpcError =
+        error.message?.toLowerCase().includes('json-rpc') ||
+        error.message?.toLowerCase().includes('missing revert data') ||
+        error.message?.toLowerCase().includes('wait for task') ||
+        error.message?.toLowerCase().includes('internal json-rpc');
+
+      if (isRpcError) {
         alert(
-          'Task Creation Successful, But Monitoring Failed ⏳\n\n' +
+          '⚠️ Task Likely Created, But Cannot Monitor\n\n' +
           'Your iApp task was likely created successfully, but we cannot monitor it due to RPC issues.\n\n' +
-          'Please check your recent tasks:\n' +
-          `https://explorer.iex.ec/arbitrum-sepolia-testnet/account/${address}\n\n` +
-          'Look for the most recent task (created just now).\n' +
-          'Wait 2-3 minutes for completion, then check the task results.\n\n' +
-          'You can also manually enter the Merkle root in Step 2 if you get it from the task result.'
+          `🔗 Check your recent tasks:\nhttps://explorer.iex.ec/arbitrum-sepolia-testnet/account/${address}\n\n` +
+          '📋 Next steps:\n' +
+          '1. Open the link above\n' +
+          '2. Find the most recent task (created just now)\n' +
+          '3. Wait 2-3 minutes for it to complete\n' +
+          '4. Once COMPLETED, click "Show results"\n' +
+          '5. Copy the merkle_root value\n' +
+          '6. Paste it in Step 2 below'
         );
       } else {
-        alert(`Error running iApp: ${error.message || 'Unknown error'}\n\nCheck console for details.`);
+        alert(
+          `❌ Error Running iApp\n\n` +
+          `Error: ${error.message || 'Unknown error'}\n\n` +
+          'Check the browser console for more details.'
+        );
       }
       setIappStatus('');
     }
