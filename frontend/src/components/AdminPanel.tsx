@@ -16,6 +16,8 @@ export default function AdminPanel() {
   const [approveAmount, setApproveAmount] = useState('');
   const [protectedDataAddresses, setProtectedDataAddresses] = useState('');
   const [iappStatus, setIappStatus] = useState<string>('');
+  const [lastTaskId, setLastTaskId] = useState<string>('');
+  const [showTaskId, setShowTaskId] = useState(false);
 
   const { dataProtectorCore, isReady } = useDataProtector();
 
@@ -166,7 +168,16 @@ export default function AdminPanel() {
 
         console.log('iApp execution result:', result);
         taskId = (result as any).taskId;
-        console.log('Task ID:', taskId);
+        console.log('✅ Task ID:', taskId);
+
+        if (taskId) {
+          const explorerLink = `https://explorer.iex.ec/arbitrum-sepolia-testnet/task/${taskId}`;
+          console.log('🔗 Explorer Link (COPY THIS):', explorerLink);
+
+          // Save taskId to state for persistent display
+          setLastTaskId(taskId);
+          setShowTaskId(true);
+        }
 
       } catch (execError: any) {
         // Task might have been created but monitoring failed
@@ -195,19 +206,27 @@ export default function AdminPanel() {
           execError.cause?.message?.toLowerCase().includes('missing revert data');
 
         if (taskId) {
-          console.log('Task ID extracted from error:', taskId);
+          console.log('✅ Task ID extracted from error:', taskId);
+          const explorerLink = `https://explorer.iex.ec/arbitrum-sepolia-testnet/task/${taskId}`;
+          console.log('🔗 Explorer Link (COPY THIS):', explorerLink);
+          console.log('📋 You can also find this link below the "Run iApp" button');
+
+          // Save taskId to state for persistent display
+          setLastTaskId(taskId);
+          setShowTaskId(true);
+
           alert(
             '✅ iApp Task Created Successfully!\n\n' +
             `Task ID: ${taskId}\n\n` +
-            `🔗 Check task status:\nhttps://explorer.iex.ec/arbitrum-sepolia-testnet/task/${taskId}\n\n` +
+            `🔗 Check task status:\n${explorerLink}\n\n` +
             '⏳ The task is running in the TEE.\n' +
             'Due to RPC monitoring issues, please:\n\n' +
-            '1. Click the link above to open the Explorer\n' +
+            '1. Copy the link from the console (F12) or from below\n' +
             '2. Wait 2-3 minutes for task completion\n' +
             '3. Once COMPLETED, click "Show results" in Explorer\n' +
             '4. Copy the merkle_root value\n' +
             '5. Paste it in Step 2 below\n\n' +
-            '💡 Tip: Refresh the Explorer page to see status updates'
+            '💡 Tip: The Explorer link is also shown below this message'
           );
           setIappStatus('');
           return;
@@ -215,13 +234,17 @@ export default function AdminPanel() {
 
         // If we couldn't extract taskId but this looks like an RPC error
         if (isRpcError) {
-          console.log('RPC error detected but no taskId found');
+          console.log('⚠️ RPC error detected but no taskId found');
+          const accountLink = `https://explorer.iex.ec/arbitrum-sepolia-testnet/account/${address}`;
+          console.log('🔗 Check your account (COPY THIS):', accountLink);
+          console.log('📋 Look for the most recent task created just now');
+
           alert(
             '⚠️ Task Likely Created, But Cannot Monitor\n\n' +
             'The task was likely created successfully, but we cannot track it due to RPC issues.\n\n' +
-            `🔗 Check your recent tasks:\nhttps://explorer.iex.ec/arbitrum-sepolia-testnet/account/${address}\n\n` +
+            `🔗 Check your recent tasks:\n${accountLink}\n\n` +
             '📋 Next steps:\n' +
-            '1. Open the link above\n' +
+            '1. Copy the link from the console (F12)\n' +
             '2. Find the most recent task (created just now)\n' +
             '3. Wait 2-3 minutes for it to complete\n' +
             '4. Get the merkle_root from task results\n' +
@@ -526,6 +549,39 @@ export default function AdminPanel() {
         {iappStatus && (
           <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4">
             <p className="text-blue-400 font-medium">⏳ {iappStatus}</p>
+          </div>
+        )}
+
+        {showTaskId && lastTaskId && (
+          <div className="bg-purple-900/30 border border-purple-500/50 rounded-lg p-4">
+            <p className="text-purple-400 font-medium mb-2">✅ Task Created Successfully</p>
+            <p className="text-gray-400 text-xs mb-2">Task ID:</p>
+            <p className="text-gray-300 text-xs font-mono break-all mb-3">
+              {lastTaskId}
+            </p>
+            <div className="flex gap-2">
+              <a
+                href={`https://explorer.iex.ec/arbitrum-sepolia-testnet/task/${lastTaskId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 px-4 rounded-lg text-center transition"
+              >
+                🔗 Open in Explorer
+              </a>
+              <button
+                onClick={() => {
+                  const link = `https://explorer.iex.ec/arbitrum-sepolia-testnet/task/${lastTaskId}`;
+                  navigator.clipboard.writeText(link);
+                  alert('Link copied to clipboard!');
+                }}
+                className="bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 px-4 rounded-lg transition"
+              >
+                📋 Copy Link
+              </button>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              ⏳ Wait 2-3 minutes, then check Explorer for results and copy the merkle_root
+            </p>
           </div>
         )}
 
