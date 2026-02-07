@@ -148,6 +148,7 @@ export default function AdminPanel() {
         app: IAPP_ADDRESS,
         args: totalPoolBaseUnits, // Pass total pool amount in base units
         workerpool: '0xB967057a21dc6A66A29721d96b8Aa7454B7c383F', // Arbitrum Sepolia prod workerpool
+        workerpoolMaxPrice: 200000000, // 0.2 nRLC - max price willing to pay for workerpool
         onStatusUpdate: ({ title, isDone }: { title: string; isDone: boolean }) => {
           setIappStatus(title);
           console.log(`iApp Status: ${title}, Done: ${isDone}`);
