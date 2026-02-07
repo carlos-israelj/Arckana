@@ -77,7 +77,49 @@ Building Arckana with iExec's confidential computing stack was an enlightening e
 
 **Recommendation:** Document the exact JSON schema and decryption flow within the TEE
 
-### 5. Frontend Integration - Next.js/Webpack Challenges ⚠️
+### 5. App Order Management ⚠️
+
+**Critical Discovery**: Missing `appMaxPrice` parameter causes cryptic errors
+
+**The Problem:**
+- When calling `processProtectedData()` without `appMaxPrice`, get error: `"No App order found for the desired price"`
+- Error message doesn't clearly indicate that you need to:
+  1. Publish an app order on the marketplace
+  2. Include `appMaxPrice` parameter in the call
+- Easy to miss this requirement in documentation
+
+**What We Learned:**
+```javascript
+// ❌ FAILS - Missing appMaxPrice
+await dataProtectorCore.processProtectedData({
+  protectedData: addresses,
+  app: IAPP_ADDRESS,
+  workerpool: '0xB967...',
+  workerpoolMaxPrice: 200000000,  // Only workerpool price specified
+});
+
+// ✅ WORKS - Include appMaxPrice
+await dataProtectorCore.processProtectedData({
+  protectedData: addresses,
+  app: IAPP_ADDRESS,
+  workerpool: '0xB967...',
+  workerpoolMaxPrice: 200000000,
+  appMaxPrice: 200000000,  // REQUIRED: Max price for app
+});
+```
+
+**Publishing App Orders:**
+- iApp Generator doesn't handle order publishing yet
+- Must use iExec SDK CLI or write custom script
+- We created `sign-and-publish-order.js` to automate this
+
+**Recommendation:**
+- Make `appMaxPrice` requirement more prominent in DataProtector docs
+- Add clear section: "Before first execution: Publish an app order"
+- Improve error message: "No app order found. Did you publish an app order? Did you set appMaxPrice?"
+- Consider auto-publishing a default order during iApp deployment
+
+### 6. Frontend Integration - Next.js/Webpack Challenges ⚠️
 
 **Critical Issue**: Building a production Next.js app with `@iexec/dataprotector` was extremely challenging
 
@@ -194,6 +236,7 @@ Building Arckana successfully demonstrated:
 - 1 iApp deployed (Python-based)
 - 100% on-chain dividend distribution via Merkle tree verification
 - Zero knowledge of private balances exposed on-chain
+- Created comprehensive documentation including app order publishing guide (`iapp/arckana-dividend-calculator/PUBLISH_APP_ORDER.md`)
 
 ---
 
@@ -206,6 +249,8 @@ Building Arckana successfully demonstrated:
 5. ✅ **More RWA Examples**: Real-world asset use case implementations
 6. 🆕 **Next.js 15+ Requirement**: Prominently document that Next.js 15+ is required for DataProtector, add to quick start guides
 7. 🆕 **Webpack Troubleshooting**: Add dedicated section for common bundler issues and solutions
+8. 🆕 **App Order Management**: Make order publishing more visible in getting started guides, clarify appMaxPrice requirement
+9. 🆕 **Better Error Messages**: Improve "No app order found" error to guide users toward solution
 
 ---
 
