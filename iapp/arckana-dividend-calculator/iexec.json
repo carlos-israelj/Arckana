@@ -1,0 +1,36 @@
+{
+  "description": "My iExec resource description, must be at least 150 chars long in order to pass the validation checks. Describe your application, dataset or workerpool to your users",
+  "license": "MIT",
+  "author": "?",
+  "social": {
+    "website": "?",
+    "github": "?"
+  },
+  "logo": "logo.png",
+  "order": {
+    "apporder": {
+      "app": "0x02Bf69af102322c8c27E8D350a1541E61B6959d8",
+      "appprice": "0",
+      "volume": "1000000",
+      "tag": "0x0000000000000000000000000000000000000000000000000000000000000003",
+      "datasetrestrict": "0x0000000000000000000000000000000000000000",
+      "workerpoolrestrict": "0x0000000000000000000000000000000000000000",
+      "requesterrestrict": "0x0000000000000000000000000000000000000000"
+    }
+  },
+  "buyConf": {},
+  "app": {
+    "owner": "0x648a3e5510f55B4995fA5A22cCD62e2586ACb901",
+    "name": "arckana-dividend-calculator",
+    "type": "DOCKER",
+    "multiaddr": "carlosisraelj/arckana-dividend-calculator:0.0.2",
+    "checksum": "0x01d94c5bd60da98f953f0583abb30210935887be2d6624d5e3a5bd5820ba3ccf",
+    "mrenclave": {
+      "framework": "SCONE",
+      "version": "v5",
+      "entrypoint": "python /app/src/app.py",
+      "heapSize": 1073741824,
+      "fingerprint": ""
+    }
+  }
+}

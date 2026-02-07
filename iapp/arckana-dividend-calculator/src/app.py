@@ -150,7 +150,31 @@ def load_protected_data(input_dir: str) -> List[Dict[str, Any]]:
     """
     protected_data = []
 
-    # Check for protectedData.json (iExec standard format)
+    # First, try to load from DataProtector protected data (encrypted ZIP)
+    dataset_filename = os.getenv('IEXEC_DATASET_FILENAME')
+    if dataset_filename:
+        print(f"Found DataProtector dataset: {dataset_filename}", file=sys.stderr)
+        try:
+            from protected_data import getValue
+
+            # Extract holder and balance using DataProtector deserializer
+            holder = getValue('holder', 'string')
+            balance_str = getValue('balance', 'string')
+            balance = int(balance_str)
+
+            protected_data.append({
+                'holder': holder,
+                'balance': balance
+            })
+
+            print(f"Loaded balance {balance} for holder {holder}", file=sys.stderr)
+
+        except Exception as e:
+            print(f"Error loading DataProtector protected data: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+
+    # Fallback: Check for protectedData.json (legacy/testing format)
     protected_data_file = os.path.join(input_dir, 'protectedData.json')
     if os.path.exists(protected_data_file):
         try:
@@ -158,24 +182,12 @@ def load_protected_data(input_dir: str) -> List[Dict[str, Any]]:
                 data = json.load(f)
                 # If data is a list, use it directly
                 if isinstance(data, list):
-                    protected_data = data
+                    protected_data.extend(data)
                 # If data is a single object, wrap it in a list
                 else:
                     protected_data.append(data)
         except (json.JSONDecodeError, IOError) as e:
             print(f"Warning: Could not load protectedData.json: {e}", file=sys.stderr)
-    else:
-        # Fallback: Load all JSON files in input directory
-        for filename in os.listdir(input_dir):
-            if filename.endswith('.json'):
-                filepath = os.path.join(input_dir, filename)
-                if os.path.isfile(filepath):
-                    try:
-                        with open(filepath, 'r') as f:
-                            data = json.load(f)
-                            protected_data.append(data)
-                    except (json.JSONDecodeError, IOError) as e:
-                        print(f"Warning: Could not load {filename}: {e}", file=sys.stderr)
 
     return protected_data
 
