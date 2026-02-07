@@ -213,6 +213,7 @@ export function useProcessProtectedData() {
         args: params.totalPoolAmount, // Pass total pool amount as args
         workerpool: '0xB967057a21dc6A66A29721d96b8Aa7454B7c383F', // Arbitrum Sepolia prod workerpool
         workerpoolMaxPrice: 200000000, // 0.2 nRLC - max price willing to pay for workerpool
+        appMaxPrice: 200000000, // 0.2 nRLC - max price willing to pay for app
         onStatusUpdate: ({ title, isDone }: { title: string; isDone: boolean }) => {
           setStatus({ title, isDone });
           console.log(`Process Protected Data Status: ${title}, Done: ${isDone}`);
