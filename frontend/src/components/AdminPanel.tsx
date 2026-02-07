@@ -394,9 +394,25 @@ export default function AdminPanel() {
           </p>
         </div>
 
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Total Pool Amount (USDC)
+          </label>
+          <input
+            type="number"
+            value={totalPool}
+            onChange={(e) => setTotalPool(e.target.value)}
+            placeholder="Enter amount (e.g., 100)"
+            className="w-full bg-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          <p className="text-gray-500 text-xs mt-1">
+            Total USDC to distribute (will be used in iApp calculation)
+          </p>
+        </div>
+
         <button
           onClick={handleRunIApp}
-          disabled={!isReady || !!iappStatus || !protectedDataAddresses}
+          disabled={!isReady || !!iappStatus || !protectedDataAddresses || !totalPool}
           className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed py-3 rounded-lg font-medium transition"
         >
           {iappStatus ? iappStatus : '⚙️ Run iApp Calculation'}
@@ -495,9 +511,9 @@ export default function AdminPanel() {
         <h4 className="font-medium mb-2">📋 Quick Guide</h4>
         <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
           <li>Approve USDC for the amount you want to distribute</li>
-          <li>Enter Protected Data addresses (from users who protected balances in Tab 1)</li>
-          <li>Enter total pool amount in Step 2</li>
+          <li>In Step 1: Enter Protected Data addresses and Total Pool amount</li>
           <li>Run iApp calculation in Step 1 to get Merkle root</li>
+          <li>In Step 2: Verify the same Total Pool amount and Merkle root</li>
           <li>Start distribution round in Step 2</li>
           <li>Users can claim in Tab 3</li>
         </ol>
