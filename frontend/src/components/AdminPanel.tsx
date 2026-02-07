@@ -142,25 +142,55 @@ export default function AdminPanel() {
 
       setIappStatus('Executing iApp in TEE...');
 
-      // Execute the iApp with protected data
-      const result = await dataProtectorCore.processProtectedData({
-        protectedData: addressList[0], // Process first one or array
-        app: IAPP_ADDRESS,
-        args: totalPoolBaseUnits, // Pass total pool amount in base units
-        workerpool: '0xB967057a21dc6A66A29721d96b8Aa7454B7c383F', // Arbitrum Sepolia prod workerpool
-        workerpoolMaxPrice: 200000000, // 0.2 nRLC - max price willing to pay for workerpool
-        onStatusUpdate: ({ title, isDone }: { title: string; isDone: boolean }) => {
-          setIappStatus(title);
-          console.log(`iApp Status: ${title}, Done: ${isDone}`);
-        },
-      });
+      let taskId: string | undefined;
 
-      console.log('iApp execution result:', result);
+      // Execute the iApp with protected data
+      try {
+        const result = await dataProtectorCore.processProtectedData({
+          protectedData: addressList[0], // Process first one or array
+          app: IAPP_ADDRESS,
+          args: totalPoolBaseUnits, // Pass total pool amount in base units
+          workerpool: '0xB967057a21dc6A66A29721d96b8Aa7454B7c383F', // Arbitrum Sepolia prod workerpool
+          workerpoolMaxPrice: 200000000, // 0.2 nRLC - max price willing to pay for workerpool
+          onStatusUpdate: ({ title, isDone }: { title: string; isDone: boolean }) => {
+            setIappStatus(title);
+            console.log(`iApp Status: ${title}, Done: ${isDone}`);
+          },
+        });
+
+        console.log('iApp execution result:', result);
+        taskId = (result as any).taskId;
+        console.log('Task ID:', taskId);
+
+      } catch (execError: any) {
+        // Task might have been created but monitoring failed
+        console.error('Error during execution:', execError);
+
+        // Try to extract taskId from error or result
+        if (execError.result?.taskId) {
+          taskId = execError.result.taskId;
+        } else if (execError.taskId) {
+          taskId = execError.taskId;
+        }
+
+        if (taskId) {
+          console.log('Task ID extracted from error:', taskId);
+          alert(
+            'iApp Task Created! ⏳\n\n' +
+            `Task ID: ${taskId}\n\n` +
+            'The task is running in the TEE.\n' +
+            'Due to RPC monitoring issues, please check the task status manually:\n\n' +
+            `https://explorer.iex.ec/arbitrum-sepolia-testnet/task/${taskId}\n\n` +
+            'Wait 2-3 minutes for completion, then check the explorer for results.'
+          );
+          setIappStatus('');
+          return;
+        }
+
+        throw execError; // Re-throw if we couldn\'t extract taskId
+      }
 
       setIappStatus('Fetching task result...');
-
-      // Extract taskId from result
-      const taskId = (result as any).taskId;
       console.log('Task ID:', taskId);
 
       // Wait a bit for the task to complete
@@ -221,7 +251,21 @@ export default function AdminPanel() {
 
     } catch (error: any) {
       console.error('Error running iApp:', error);
-      alert(`Error running iApp: ${error.message || 'Unknown error'}\n\nCheck console for details.`);
+
+      // Check if this is a monitoring/RPC error but task might have been created
+      if (error.message?.includes('JSON-RPC') || error.message?.includes('wait for task')) {
+        alert(
+          'Task Creation Successful, But Monitoring Failed ⏳\n\n' +
+          'Your iApp task was likely created successfully, but we cannot monitor it due to RPC issues.\n\n' +
+          'Please check your recent tasks:\n' +
+          `https://explorer.iex.ec/arbitrum-sepolia-testnet/account/${address}\n\n` +
+          'Look for the most recent task (created just now).\n' +
+          'Wait 2-3 minutes for completion, then check the task results.\n\n' +
+          'You can also manually enter the Merkle root in Step 2 if you get it from the task result.'
+        );
+      } else {
+        alert(`Error running iApp: ${error.message || 'Unknown error'}\n\nCheck console for details.`);
+      }
       setIappStatus('');
     }
   };
