@@ -14,6 +14,7 @@ export default function AdminPanel() {
   const [totalPool, setTotalPool] = useState('');
   const [merkleRoot, setMerkleRoot] = useState('');
   const [approveAmount, setApproveAmount] = useState('');
+  const [protectedDataAddresses, setProtectedDataAddresses] = useState('');
   const [iappStatus, setIappStatus] = useState<string>('');
 
   const { dataProtectorCore, isReady } = useDataProtector();
@@ -107,42 +108,43 @@ export default function AdminPanel() {
       return;
     }
 
+    if (!protectedDataAddresses) {
+      alert('Please enter Protected Data Addresses (comma-separated).');
+      return;
+    }
+
     if (!dataProtectorCore) {
       alert('DataProtector not initialized. Please connect your wallet.');
       return;
     }
 
     try {
-      setIappStatus('Fetching protected data...');
+      setIappStatus('Parsing protected data addresses...');
 
-      // Get all protected data (holders who have protected their balances)
-      const protectedDataList = await dataProtectorCore.fetchProtectedData({
-        owner: address, // Only fetch data owned by current user for testing
-      });
+      // Parse comma-separated addresses
+      const addressList = protectedDataAddresses
+        .split(',')
+        .map(addr => addr.trim())
+        .filter(addr => addr.length > 0);
 
-      console.log('Protected data list:', protectedDataList);
-
-      if (!protectedDataList || protectedDataList.length === 0) {
-        alert('No protected data found. Users need to protect their balances first (Tab 1).');
+      if (addressList.length === 0) {
+        alert('No valid protected data addresses found.');
         setIappStatus('');
         return;
       }
 
-      setIappStatus(`Found ${protectedDataList.length} protected data items. Preparing execution...`);
+      console.log('Protected data addresses:', addressList);
+      setIappStatus(`Found ${addressList.length} protected data items. Preparing execution...`);
 
       // Convert totalPool to base units (6 decimals for USDC)
       const totalPoolBaseUnits = parseUnits(totalPool, 6).toString();
       console.log('Total pool in base units:', totalPoolBaseUnits);
 
-      // Extract addresses from protected data
-      const protectedDataAddresses = protectedDataList.map((pd: any) => pd.address);
-      console.log('Protected data addresses:', protectedDataAddresses);
-
       setIappStatus('Executing iApp in TEE...');
 
       // Execute the iApp with protected data
       const result = await dataProtectorCore.processProtectedData({
-        protectedData: protectedDataAddresses[0], // Process first one or array
+        protectedData: addressList[0], // Process first one or array
         app: IAPP_ADDRESS,
         args: totalPoolBaseUnits, // Pass total pool amount in base units
         workerpool: '0xB967057a21dc6A66A29721d96b8Aa7454B7c383F', // Arbitrum Sepolia prod workerpool
@@ -374,15 +376,31 @@ export default function AdminPanel() {
           <p className="text-gray-400 text-sm mb-4">
             Run the iApp in TEE to process all protected balances and generate the Merkle tree
           </p>
-
-          <button
-            onClick={handleRunIApp}
-            disabled={!isReady || !!iappStatus}
-            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed py-3 rounded-lg font-medium transition"
-          >
-            {iappStatus ? iappStatus : '⚙️ Run iApp Calculation'}
-          </button>
         </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Protected Data Addresses (comma-separated)
+          </label>
+          <textarea
+            value={protectedDataAddresses}
+            onChange={(e) => setProtectedDataAddresses(e.target.value)}
+            placeholder="0xabc...,0xdef...,0x123..."
+            rows={3}
+            className="w-full bg-gray-700 rounded-lg px-4 py-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          <p className="text-gray-500 text-xs mt-1">
+            Enter the Protected Data addresses from users who protected their balances (Tab 1)
+          </p>
+        </div>
+
+        <button
+          onClick={handleRunIApp}
+          disabled={!isReady || !!iappStatus || !protectedDataAddresses}
+          className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed py-3 rounded-lg font-medium transition"
+        >
+          {iappStatus ? iappStatus : '⚙️ Run iApp Calculation'}
+        </button>
 
         {iappStatus && (
           <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4">
@@ -477,9 +495,10 @@ export default function AdminPanel() {
         <h4 className="font-medium mb-2">📋 Quick Guide</h4>
         <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
           <li>Approve USDC for the amount you want to distribute</li>
-          <li>Run iApp calculation to get Merkle root</li>
-          <li>Enter total pool amount</li>
-          <li>Start distribution round</li>
+          <li>Enter Protected Data addresses (from users who protected balances in Tab 1)</li>
+          <li>Enter total pool amount in Step 2</li>
+          <li>Run iApp calculation in Step 1 to get Merkle root</li>
+          <li>Start distribution round in Step 2</li>
           <li>Users can claim in Tab 3</li>
         </ol>
       </div>
