@@ -16,6 +16,7 @@ import os
 import sys
 import json
 import hashlib
+import struct
 from typing import Dict, List, Tuple, Any
 from decimal import Decimal, ROUND_DOWN
 
@@ -159,8 +160,11 @@ def load_protected_data(input_dir: str) -> List[Dict[str, Any]]:
 
             # Extract holder and balance using DataProtector deserializer
             holder = getValue('holder', 'string')
-            # Balance is stored as number, not string
-            balance = getValue('balance', 'number')
+            # Balance is stored as f64 (8 bytes, little-endian)
+            # getValue('balance', 'number') returns bytes, need to unpack
+            balance_bytes = getValue('balance', 'number')
+            balance_float = struct.unpack('<d', balance_bytes)[0]  # '<d' = little-endian double (f64)
+            balance = int(balance_float)  # Convert to integer
 
             protected_data.append({
                 'holder': holder,

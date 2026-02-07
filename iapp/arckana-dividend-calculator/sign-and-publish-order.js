@@ -29,7 +29,7 @@ async function signAndPublishAppOrder() {
     console.log('Creating app order...');
 
     const appOrder = await iexec.order.createApporder({
-      app: '0xB5CED46207D14A976971C21F241F2c39a921755D',
+      app: '0x8686a1947E3d6D67782F1B822f8bf79483BD12D2',
       appprice: 0,
       volume: 1000000,
       tag: '0x0000000000000000000000000000000000000000000000000000000000000003',
