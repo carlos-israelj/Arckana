@@ -203,31 +203,51 @@ export default function TokenFaucet() {
       {/* Add to Wallet Button */}
       <button
         onClick={async () => {
-          const ethereum = (window as any).ethereum;
-
-          if (!ethereum) {
-            alert('No Ethereum wallet detected. Please install MetaMask.');
-            return;
-          }
-
-          // Detect if it's Rabby Wallet
-          const isRabby = ethereum.isRabby;
-
-          // Show manual instructions for Rabby
-          if (isRabby) {
-            alert(
-              '⚠️ Rabby Wallet - Add Token Manually\n\n' +
-              'Please add the token manually in Rabby:\n\n' +
-              `Address: ${CONTRACTS.arckanaToken}\n` +
-              'Symbol: ARCK\n' +
-              'Decimals: 6\n\n' +
-              'Go to: Assets → Add Custom Token'
-            );
-            return;
-          }
-
-          // For MetaMask, use wallet_watchAsset
           try {
+            // Try to get ethereum provider from window
+            const ethereum = (window as any).ethereum;
+
+            if (!ethereum) {
+              alert(
+                '⚠️ No wallet detected\n\n' +
+                'Please install a Web3 wallet like MetaMask.\n\n' +
+                'Or add the token manually:\n' +
+                `Address: ${CONTRACTS.arckanaToken}\n` +
+                'Symbol: ARCK\n' +
+                'Decimals: 6'
+              );
+              return;
+            }
+
+            // Detect wallet type
+            const isRabby = ethereum.isRabby;
+            const isMetaMask = ethereum.isMetaMask;
+            const isCoinbaseWallet = ethereum.isCoinbaseWallet;
+
+            // For wallets that don't support wallet_watchAsset, show manual instructions
+            if (isRabby || (!isMetaMask && !isCoinbaseWallet)) {
+              const walletName = isRabby ? 'Rabby' : 'your wallet';
+              alert(
+                `⚠️ ${walletName} - Add Token Manually\n\n` +
+                'Please add the token manually in your wallet:\n\n' +
+                `Address: ${CONTRACTS.arckanaToken}\n` +
+                'Symbol: ARCK\n' +
+                'Decimals: 6\n\n' +
+                '1. Open your wallet\n' +
+                '2. Go to: Assets → Add Custom Token\n' +
+                '3. Paste the address above'
+              );
+              // Copy address to clipboard for convenience
+              try {
+                await navigator.clipboard.writeText(CONTRACTS.arckanaToken);
+                alert('✅ Contract address copied to clipboard!');
+              } catch (e) {
+                // Clipboard API might fail, that's ok
+              }
+              return;
+            }
+
+            // For MetaMask and compatible wallets, try wallet_watchAsset
             const result = await ethereum.request({
               method: 'wallet_watchAsset',
               params: {
@@ -246,22 +266,38 @@ export default function TokenFaucet() {
           } catch (error: any) {
             console.error('Error adding token to wallet:', error);
 
+            // User rejected
             if (error.code === 4001) {
               alert('Token addition was cancelled.');
-            } else {
-              alert(
-                'Could not add token automatically.\n\n' +
-                'Add it manually:\n' +
-                `Address: ${CONTRACTS.arckanaToken}\n` +
-                'Symbol: ARCK\n' +
-                'Decimals: 6'
-              );
+              return;
+            }
+
+            // Method not supported or other error
+            alert(
+              '⚠️ Could not add token automatically\n\n' +
+              'Please add it manually in your wallet:\n\n' +
+              `Address: ${CONTRACTS.arckanaToken}\n` +
+              'Symbol: ARCK\n' +
+              'Decimals: 6\n\n' +
+              'Steps:\n' +
+              '1. Open your wallet\n' +
+              '2. Go to Assets/Tokens\n' +
+              '3. Click "Add Custom Token"\n' +
+              '4. Paste the address above'
+            );
+
+            // Try to copy to clipboard
+            try {
+              await navigator.clipboard.writeText(CONTRACTS.arckanaToken);
+              alert('✅ Contract address copied to clipboard!');
+            } catch (e) {
+              // Clipboard API might fail, that's ok
             }
           }
         }}
         className="w-full mt-4 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm transition"
       >
-        ➕ Add ARCK to Wallet (MetaMask)
+        ➕ Add ARCK to Wallet
       </button>
     </div>
   );
